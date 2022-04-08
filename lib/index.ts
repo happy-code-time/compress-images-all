@@ -15,7 +15,7 @@ const { performance } = require('perf_hooks');
 //@ts-ignore
 const crypto = require("crypto");
 
-class CompressImage {
+class CompressImagesAll {
     private cacheDirectory: string;
     private source: string;
     private destination: string;
@@ -269,7 +269,7 @@ class CompressImage {
                     }
 
                     if('' !== match){
-                        this.logger(`Copy file from cache: ${destination}`);
+                        this.logger(`Copy file from cache: ${c}`);
 
                         await self.Async(
                             gulp
@@ -526,8 +526,6 @@ class CompressImage {
                                     }
                                 }
 
-                                console.log(r);
-
                                 resolve(r);
                             } catch(e){
                                 resolve({});
@@ -608,4 +606,4 @@ class CompressImage {
 };
 
 //Export the Method
-module.exports = CompressImage;
+module.exports = CompressImagesAll;

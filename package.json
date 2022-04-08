@@ -1,6 +1,6 @@
 {
   "name": "compress-images-all",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Compress images all",
   "main": "index.js",
   "scripts": {

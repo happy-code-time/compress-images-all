@@ -8,7 +8,7 @@
 
 ## Usage with gulp
 
-    const CompressImage = require('compress-images-all');
+    const CompressImagesAll = require('compress-images-all');
 
     gulp.task('compress', async () => {
         
@@ -16,7 +16,7 @@
             /**
              * New instance
              */
-            const compress = new CompressImage();
+            const compress = new CompressImagesAll();
             /**
              * Set source path
              */
@@ -79,14 +79,14 @@
 ## Usage with nodejs
 
     const path = require('path');
-    const CompressImage = require('compress-images-all');
+    const CompressImagesAll = require('compress-images-all');
 
     (
         async () => {
             /**
              * New instance
              */
-            const compress = new CompressImage();
+            const compress = new CompressImagesAll();
             /**
              * Set source path
              */

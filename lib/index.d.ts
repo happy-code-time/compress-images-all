@@ -12,11 +12,11 @@ declare const readdir: any;
 declare const getPixels: any;
 declare const performance: any;
 declare const crypto: any;
-declare class CompressImage {
+declare class CompressImagesAll {
     private cacheDirectory;
     private source;
     private destination;
-    private allowedFileExtensions;
+    private extensions;
     private count;
     private root;
     private directories;
@@ -30,8 +30,8 @@ declare class CompressImage {
     getDestination(): string;
     setCachedDirectory(directory: string): void;
     getCachedDirectory(): string;
-    setAllowedFileExtensions(allowedFileExtensions?: never[]): void;
-    getAllowedFileExtensions(): any[];
+    setExtensions(extensions?: never[]): void;
+    getExtensions(): any[];
     start(): Promise<unknown>;
     compress(): Promise<unknown>;
     progressSingleDirectory(directory: string, singleSourcePath: {

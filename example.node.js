@@ -1,12 +1,12 @@
 const path = require('path');
-const CompressImage = require('.');
+const CompressImagesAll = require('.');
 
 (
     async () => {
         /**
          * New instance
          */
-        const compress = new CompressImage();
+        const compress = new CompressImagesAll();
         /**
          * Set source path
          */
