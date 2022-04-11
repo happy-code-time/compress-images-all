@@ -39,7 +39,8 @@ declare class CompressImagesAll {
         files: string[];
         count: number;
     }): Promise<unknown>;
-    processSingleImage(source: string, destination: string, cachedPath: string): Promise<unknown>;
+    processSingleImageWithCacheDirectory(source: string, destination: string, cachedPath: string): Promise<unknown>;
+    processSingleImage(source: string, destination: string): Promise<unknown>;
     createCachedDirectory(): void;
     logger(message: string): void;
     Async(p: any): Promise<unknown>;

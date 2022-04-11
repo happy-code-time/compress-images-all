@@ -48,9 +48,15 @@
              * 
              * type: svg
              * package: gulp-svgmin
+             *
+             *
+             * If the extensions set includes the special word 'all' then all files (mp4, xlsx, nef, ...)
+             * are not compiled, but moved to the destinations directory. Just compress.setExtensions(['all']); 
              */
             compress.setExtensions(['jpg', 'jpeg', 'png', 'gif', 'ico', 'svg']);
             /**
+             * -- Optional --
+             *
              * Set cache directory for more performance after the first compilation process are done
              * 
              * If the same directory/image are compiled again, the image are readed from the cache
@@ -118,9 +124,15 @@
              * 
              * type: svg
              * package: gulp-svgmin
+             *
+             *
+             * If the extensions set includes the special word 'all' then all files (mp4, xlsx, nef, ...)
+             * are not compiled, but moved to the destinations directory. Just compress.setExtensions(['all']); 
              */
             compress.setExtensions(['jpg', 'jpeg', 'png', 'gif', 'ico', 'svg']);
             /**
+             * -- Optional --
+             *
              * Set cache directory for more performance after the first compilation process are done
              * 
              * If the same directory/image are compiled again, the image are readed from the cache

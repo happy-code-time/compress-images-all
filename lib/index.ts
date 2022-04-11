@@ -76,8 +76,8 @@ class CompressImagesAll {
         return new Promise(async (resolve, reject) => {
             try {
 
-                if(!this.getCachedDirectory().length) {
-                    reject('Cache directory not provided');
+                if('' !== this.getCachedDirectory() && !this.fileExists(this.getCachedDirectory())) {
+                    this.createCachedDirectory();
                 }
                 
                 this.cachedHashChecksums = await this.getChecksums();
@@ -189,10 +189,20 @@ class CompressImagesAll {
                     const nextImage = async () => {
                         i += 1;
 
-                        await self.processSingleImage(files[i], directory, cachedPath);
+                        /**
+                         * No cache directory support
+                         */
+                        if('' == this.getCachedDirectory()){
+                            await self.processSingleImage(files[i], directory);
+                        } else {
+                            /**
+                             * Support cache directory
+                             */
+                            await self.processSingleImageWithCacheDirectory(files[i], directory, cachedPath);
 
-                        if(0 >= this.globalImagesCount){
-                            await this.saveChecksums(this.cachedHashChecksumsTemp);
+                            if(0 >= this.globalImagesCount){
+                                await this.saveChecksums(this.cachedHashChecksumsTemp);
+                            }
                         }
 
                         if (i !== files.length - 1) {
@@ -216,7 +226,7 @@ class CompressImagesAll {
         });
     }
 
-    async processSingleImage(source: string, destination: string, cachedPath: string) {
+    async processSingleImageWithCacheDirectory(source: string, destination: string, cachedPath: string) {
         const self = this;
 
         return new Promise(async (resolve, reject) => {
@@ -235,6 +245,7 @@ class CompressImagesAll {
 
                 if (undefined !== ext[ext.length - 1]) {
                     ext = ext[ext.length - 1];
+                    ext = ext.toLowerCase();
                 }
                 /**
                  * Cached file path
@@ -288,6 +299,7 @@ class CompressImagesAll {
                 }
 
                 this.logger(`Compiling image: ${source}`);
+                let compiled = false;
 
                 /**
                  * Compress images
@@ -300,6 +312,8 @@ class CompressImagesAll {
                             .pipe(gulp.dest(cachedPath)
                         )
                     );
+
+                    compiled = true;
                 }
 
                 if ('png' == ext) {
@@ -316,6 +330,8 @@ class CompressImagesAll {
                             .pipe(gulp.dest(cachedPath)
                         )
                     );
+
+                    compiled = true;
                 }
 
                 if ('jpg' == ext || 'jpeg' == ext) {
@@ -330,6 +346,8 @@ class CompressImagesAll {
                             .pipe(gulp.dest(cachedPath)
                         )
                     );
+
+                    compiled = true;
                 }
 
                 if ('gif' == ext) {
@@ -344,6 +362,8 @@ class CompressImagesAll {
                             .pipe(gulp.dest(cachedPath)
                         )
                     );
+
+                    compiled = true;
                 }
 
                 if ('ico' == ext) {
@@ -353,31 +373,158 @@ class CompressImagesAll {
                             .pipe(gulp.dest(cachedPath)
                         )
                     );
+
+                    compiled = true;
                 }
 
-                if('ico' == ext || 'png' == ext || 'svg' == ext || 'jpg' == ext || 'jpeg' == ext || 'gif' == ext){
-                    
-                    if(!hashCachedFile.length){
-                        hashCachedFile = await this.calculateHash(c);
-                    }
-                    
-                    /**
-                     * Save generated hash of hashed file
-                     * 
-                     * [
-                     *  "/tmp/compress-images-all/2.jpg" = "cabfdf3be79ed370ccf6b18ec332926...",
-                     *  "/tmp/compress-images-all/3.jpg" = "81e80813d79b356a4169ec9dsaqdas3..."
-                     * ]
-                     */
-                    this.cachedHashChecksums[c] = hashCachedFile;
-                    this.cachedHashChecksumsTemp[c] = hashCachedFile;
-
-                    /**
-                     * Copy from cache to origin destination
-                     */
+                if( (this.getExtensions().includes(ext) || this.getExtensions().includes('all')) && false === compiled){
                     await self.Async(
                         gulp
-                            .src(c)
+                            .src(source)
+                            .pipe(gulp.dest(cachedPath)
+                        )
+                    );
+                }
+
+                if(!hashCachedFile.length){
+                    hashCachedFile = await this.calculateHash(c);
+                }
+                
+                /**
+                 * Save generated hash of hashed file
+                 * 
+                 * [
+                 *  "/tmp/compress-images-all/2.jpg" = "cabfdf3be79ed370ccf6b18ec332926...",
+                 *  "/tmp/compress-images-all/3.jpg" = "81e80813d79b356a4169ec9dsaqdas3..."
+                 * ]
+                 */
+                this.cachedHashChecksums[c] = hashCachedFile;
+                this.cachedHashChecksumsTemp[c] = hashCachedFile;
+
+                /**
+                 * Copy from cache to origin destination
+                 */
+                await self.Async(
+                    gulp
+                        .src(c)
+                        .pipe(gulp.dest(destination)
+                    )
+                );
+
+                resolve(true);
+            }
+            catch (e) {
+                this.logger(`[-] Error on single image: ${source} | ${e}`);
+                resolve(false);
+            }
+        });
+    };
+
+    async processSingleImage(source: string, destination: string) {
+        const self = this;
+
+        return new Promise(async (resolve, reject) => {
+            try {
+                this.globalImagesCount -= 1;
+                this.logger(`${this.globalImagesCount}`);
+                /**
+                 * Get filename
+                 */
+                let filename: string[] | string = source.split('/');
+                filename = filename[filename.length - 1];
+                /**
+                 * File extension
+                 */
+                let ext: string[] | string = source.split('.');
+
+                if (undefined !== ext[ext.length - 1]) {
+                    ext = ext[ext.length - 1];
+                    ext = ext.toLowerCase();
+                }
+
+                this.logger(`Compiling image: ${source}`);
+                let compiled = false;
+
+                /**
+                 * Compress images
+                 */
+                if ('svg' === ext) {
+                    await self.Async(
+                        gulp
+                            .src(source)
+                            .pipe(svgmin())
+                            .pipe(gulp.dest(destination)
+                        )
+                    );
+
+                    compiled = true;
+                }
+
+                if ('png' == ext) {
+                    await self.Async(
+                        gulp
+                            .src(source)
+                            .pipe(
+                                imagemin([
+                                    optipng({
+                                        progressive: true,
+                                    }),
+                                ]),
+                            )
+                            .pipe(gulp.dest(destination)
+                        )
+                    );
+
+                    compiled = true;
+                }
+
+                if ('jpg' == ext || 'jpeg' == ext) {
+                    await self.Async(
+                        gulp
+                            .src(source)
+                            .pipe(
+                                imagemin([
+                                    jpeg(),
+                                ]),
+                            )
+                            .pipe(gulp.dest(destination)
+                        )
+                    );
+
+                    compiled = true;
+                }
+
+                if ('gif' == ext) {
+                    await self.Async(
+                        gulp
+                            .src(source)
+                            .pipe(
+                                imagemin([
+                                    gifsicle(),
+                                ]),
+                            )
+                            .pipe(gulp.dest(destination)
+                        )
+                    );
+
+                    compiled = true;
+                }
+
+                if ('ico' == ext) {
+                    await self.Async(
+                        gulp
+                            .src(source)
+                            .pipe(gulp.dest(destination)
+                        )
+                    );
+
+                    compiled = true;
+                }
+
+                if( (this.getExtensions().includes(ext) || this.getExtensions().includes('all')) && false === compiled){
+                    await self.Async(
+                        gulp
+                            .src(source)
                             .pipe(gulp.dest(destination)
                         )
                     );
@@ -476,16 +623,21 @@ class CompressImagesAll {
                             /**
                              * Append file names to the object holder
                              */
-                            if (2 <= res.length && this.getExtensions().includes(extension)) {
+                            if (2 <= res.length || (this.getExtensions().includes(extension) || this.getExtensions().includes('all'))) {
                                 this.globalImagesCount += 1;
                                 f[destination].files.push(res);
 
                                 let c = destination.replace(this.getDestination(), '');
                                 c = c.replace(__dirname, '');
                                 c = c.replace(`${this.getSource()}`, '');
-                                f[destination].cachedPath = `${this.getCachedDirectory()}${c}`;
 
-                                await self.makeDir(f[destination].cachedPath);
+                                if('' !== this.getCachedDirectory()){
+                                    f[destination].cachedPath = `${this.getCachedDirectory()}${c}`;
+
+                                    await self.makeDir(f[destination].cachedPath);
+                                } else {
+                                    f[destination].cachedPath = '';
+                                }
                             }
                         }
 
