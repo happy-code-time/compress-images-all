@@ -10,6 +10,7 @@ declare const fs: any;
 declare const readFile: any;
 declare const readdir: any;
 declare const getPixels: any;
+declare const imageHash: any;
 declare const performance: any;
 declare const crypto: any;
 declare class CompressImagesAll {
@@ -23,17 +24,29 @@ declare class CompressImagesAll {
     private globalImagesCount;
     private cachedHashChecksums;
     private cachedHashChecksumsTemp;
+    private removeUnusedFiles;
+    private displayLogging;
+    private cachedFilename;
+    private timeStart;
+    private timeEnd;
+    private removeTargetIfExists;
     constructor();
-    setSource(source?: string): void;
+    setSource(source?: string): CompressImagesAll;
     getSource(): string;
-    setDestination(destination?: string): void;
+    setDestination(destination?: string): CompressImagesAll;
     getDestination(): string;
-    setCachedDirectory(directory: string): void;
+    setCachedDirectory(directory: string): CompressImagesAll;
     getCachedDirectory(): string;
-    setExtensions(extensions?: never[]): void;
+    setExtensions(extensions?: never[]): CompressImagesAll;
     getExtensions(): any[];
-    start(): Promise<unknown>;
-    compress(): Promise<unknown>;
+    setRemoveUnusedFiles(removeUnusedFiles: boolean): CompressImagesAll;
+    getRemoveUnusedFiles(): boolean;
+    setDisplayLogging(displayLogging: boolean): CompressImagesAll;
+    getDisplayLogging(): boolean;
+    setCacheFilename(cachedFilename: string): CompressImagesAll;
+    getCacheFilename(): string;
+    setRemoveTargetIfExists(removeTargetIfExists: boolean): CompressImagesAll;
+    getRemoveTargetIfExists(): boolean;
     progressSingleDirectory(directory: string, singleSourcePath: {
         cachedPath: string;
         files: string[];
@@ -43,15 +56,19 @@ declare class CompressImagesAll {
     processSingleImage(source: string, destination: string): Promise<unknown>;
     createCachedDirectory(): void;
     logger(message: string): void;
-    Async(p: any): Promise<unknown>;
-    makeDir(destination?: string): Promise<unknown>;
-    getFiles(dir: string, files?: {}): Promise<unknown>;
-    getChecksums(): Promise<{
-        [key: string]: any;
+    Async(p: any): Promise<boolean>;
+    makeDir(destination?: string): Promise<boolean>;
+    getFiles(dir: string, files?: {}): Promise<{
+        [direcotry: string]: [files: string[], count: number];
     }>;
-    saveChecksums(cachedHashChecksums: {
+    getChecksums(): Promise<{
+        [directory: string]: string;
+    }>;
+    saveFileWithChecksums(cachedHashChecksums: {
         [key: string]: any;
     }): Promise<boolean>;
     fileExists(filepath: string): boolean;
-    calculateHash(file: string): Promise<string>;
+    calculateHash(filePath: string): Promise<string>;
+    compress(): Promise<unknown>;
+    start(): Promise<unknown>;
 }
