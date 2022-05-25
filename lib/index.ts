@@ -560,7 +560,7 @@ class CompressImagesAll {
      */
     logger(message: string): void {
         if(this.getDisplayLogging()){
-            console.log('\x1b[33m', `${message}`);
+            console.log('\x1b[32m', `${message}`);
         }
     }
 
