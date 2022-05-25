@@ -10,6 +10,7 @@ const fs = require('fs');
 const { readFile } = require('fs/promises')
 const { readdir } = fs.promises;
 const getPixels = require("get-pixels");
+const { imageHash }= require('image-hash');
 //@ts-ignore
 const { performance } = require('perf_hooks');
 //@ts-ignore
@@ -26,6 +27,12 @@ class CompressImagesAll {
     private globalImagesCount: number;
     private cachedHashChecksums: { [key: string]: any };
     private cachedHashChecksumsTemp: { [key: string]: any };
+    private removeUnusedFiles: boolean;
+    private displayLogging: boolean;
+    private cachedFilename: string;
+    private timeStart: any;
+    private timeEnd: any;
+    private removeTargetIfExists: boolean;
 
     constructor() {
         this.cacheDirectory = '';
@@ -38,141 +45,107 @@ class CompressImagesAll {
         this.directories = [];
         this.cachedHashChecksums = {};
         this.cachedHashChecksumsTemp = {};
+        this.removeUnusedFiles = false;
+        this.displayLogging = false;
+        this.cachedFilename = 'cachedFiles';
+        this.removeTargetIfExists = false;
     }
 
-    setSource(source: string = '') {
-        this.source = source;
+    setSource(source: string = ''): CompressImagesAll {
+        if(typeof '' === typeof source && 0 < source.length){
+            this.source = source;
+        }
+
+        return this;
     }
 
     getSource(): string {
         return this.source;
     }
 
-    setDestination(destination: string = '') {
-        this.destination = destination;
+    setDestination(destination: string = ''): CompressImagesAll {
+        if(typeof '' === typeof destination && 0 < destination.length){
+            this.destination = destination;
+        }
+
+        return this;
     }
 
     getDestination(): string {
         return this.destination;
     }
 
-    setCachedDirectory(directory: string) {
-        this.cacheDirectory = directory;
+    setCachedDirectory(directory: string): CompressImagesAll {
+        if(typeof '' === typeof directory && 0 < directory.length){
+            this.cacheDirectory = directory;
+        }
+
+        return this;
     }
 
     getCachedDirectory(): string {
         return this.cacheDirectory;
     }
 
-    setExtensions(extensions = []) {
-        this.extensions = extensions
+    setExtensions(extensions = []): CompressImagesAll {
+        if(typeof [] === typeof extensions){
+            this.extensions = extensions;
+        }
+
+        return this;
     }
 
     getExtensions() {
         return this.extensions
     }
 
-    start() {
-        return new Promise(async (resolve, reject) => {
-            try {
+    setRemoveUnusedFiles(removeUnusedFiles: boolean): CompressImagesAll {
+        if(typeof true === typeof removeUnusedFiles){
+            this.removeUnusedFiles = removeUnusedFiles;
+        }
 
-                if('' !== this.getCachedDirectory() && !this.fileExists(this.getCachedDirectory())) {
-                    this.createCachedDirectory();
-                }
-                
-                this.cachedHashChecksums = await this.getChecksums();
-                /**
-                 * Create nested object - result of reading source tree
-                 * 
-                 * {
-                 *  '/var/www/html/public/images/time : {
-                 *      files: [
-                 *          '/var/www/html/assets/images/time/natalia-ventskovskaya-xvKg3qsZBp8-unsplash.jpg',
-                 *          '/var/www/html/assets/images/time/nathan-dumlao-5Hl5reICevY-unsplash.jpg',
-                 *          '/var/www/html/assets/images/time/saffu-E4kKGI4oGaU-unsplash.jpg'
-                 *      ],
-                 *      count: 3,
-                 *      cachedPath: '/tmp/compress-images-all/time'
-                 *  },
-                 * 
-                 *  '/var/www/html/public/images/ig : {
-                 *      files: [
-                 *          '/var/www/html/assets/images/ig/jenny-pace-K5IUb0kBZZ8-unsplash.jpg',
-                 *          '/var/www/html/assets/images/ig/markus-spiske-K-iJz15pfww-unsplash.jpg',
-                 *          '/var/www/html/assets/images/ig/mgg-vitchakorn-zXNC_lBBVGE-unsplash.jpg',
-                 *          '/var/www/html/assets/images/ig/monika-grabkowska-nVoDL1YDWRE-unsplash.jpg',
-                 *          '/var/www/html/assets/images/ig/raspopova-marina-Kd6uDjOVwDE-unsplash.jpg'
-                 *      ],
-                 *      count: 5,
-                 *      cachedPath: '/tmp/compress-images-all/ig'
-                 *  }
-                 * }
-                 */
-                this.root = await this.getFiles(this.getSource());
-                this.directories = Object.keys(this.root);
-
-                if (!this.directories.length) {
-                    this.logger('[+] No files to proocess');
-                    return resolve(true);
-                }
-
-
-                this.logger(`[+] Processing directories: ${this.directories.length}`);
-                await this.compress();
-                resolve(true);
-            }
-            catch (e) {
-                this.logger(`[-] Error on process: ${e}`);
-                reject(e);
-            }
-        });
+        return this;
     }
 
-    /**
-     * Root node
-     */
-    compress() {
-        const self = this;
-
-        return new Promise(async (resolve, reject) => {
-            const compress = async () => {
-                self.count += 1;
-
-                if (undefined === self.directories[self.count]) {
-                    resolve(true);
-                }
-                else {
-                    /**
-                     * Recursive loop
-                     */
-                    if (self.root[self.directories[self.count]].files.length == 0) {
-                        await self.compress();
-                    }
-                    else {
-                        /**
-                         * Process single path
-                         * Single path stored in this.root as object key with settings
-                         */
-                        await self.progressSingleDirectory(
-                            /**
-                             * Source directory
-                             */
-                            self.directories[self.count],
-                            /**
-                             * Single directory 
-                             */
-                            self.root[self.directories[self.count]],
-                        );
-                    }
-
-                    compress();
-                }
-            };
-
-            compress();
-        });
+    getRemoveUnusedFiles(): boolean {
+        return this.removeUnusedFiles;
     }
 
+    setDisplayLogging(displayLogging: boolean): CompressImagesAll {
+        if(typeof true === typeof displayLogging){
+            this.displayLogging = displayLogging;
+        }
+
+        return this;
+    }
+    
+    getDisplayLogging(): boolean {
+        return this.displayLogging;
+    }
+
+    setCacheFilename(cachedFilename: string): CompressImagesAll {
+        if(typeof '' === typeof cachedFilename && 0 < cachedFilename.length){
+            this.cachedFilename = cachedFilename;
+        }
+
+        return this;
+    }
+    
+    getCacheFilename(): string {
+        return this.cachedFilename;
+    }
+
+    setRemoveTargetIfExists(removeTargetIfExists: boolean): CompressImagesAll {
+        if(typeof true === typeof removeTargetIfExists){
+            this.removeTargetIfExists = removeTargetIfExists;
+        }
+
+        return this;
+    }
+    
+    getRemoveTargetIfExists(): boolean {
+        return this.removeTargetIfExists;
+    }
 
     progressSingleDirectory(directory: string, singleSourcePath: { cachedPath: string, files: string[], count: number }) {
         const self = this;
@@ -199,9 +172,33 @@ class CompressImagesAll {
                              * Support cache directory
                              */
                             await self.processSingleImageWithCacheDirectory(files[i], directory, cachedPath);
-
+                            /**
+                             * Save tmp file on the last loop
+                             */
                             if(0 >= this.globalImagesCount){
-                                await this.saveChecksums(this.cachedHashChecksumsTemp);
+                                /**
+                                 * Calculate diff, to delete unwanted files from the cache directory
+                                 */
+                                if(this.getRemoveUnusedFiles()){
+                                    const diff: string[] = [];
+                                    const oldCompiledImages = Object.getOwnPropertyNames(this.cachedHashChecksums);
+
+                                    for(let x = 0; x < oldCompiledImages.length; x++){
+                                        if(undefined === this.cachedHashChecksumsTemp[oldCompiledImages[x]]){
+                                            diff.push( oldCompiledImages[x] ); 
+                                        }
+                                    }
+    
+                                    for(let x = 0; x < diff.length; x++){
+                                        fs.unlinkSync(diff[x]);
+                                        this.logger(`Removed unused file: ${diff[x]}`)
+                                    }
+                                }
+
+                                /**
+                                 * Save file as new tmp file
+                                 */
+                                await this.saveFileWithChecksums(this.cachedHashChecksumsTemp);
                             }
                         }
 
@@ -250,57 +247,62 @@ class CompressImagesAll {
                 /**
                  * Cached file path
                  */
-                const c = `${cachedPath}/${filename}`;
+                const fullFilePath = `${cachedPath}/${filename}`;
+                /**
+                 * Calculate hash from path (file)
+                 */
+                let hashFromCurrentFile: string = await this.calculateHash(source);
                 /**
                  * Cache file exists
                  */
-                let hashCachedFile: string = '';
-
-                if(this.fileExists(c)) {
-                    hashCachedFile = await this.calculateHash(c);
+                if(this.fileExists(fullFilePath)) {
                     /**
-                     * Hash of file exists and is the same as generate to avoid ignoring images thats content has been changed but the name not
+                     * Get the object keys (paths)
                      */
                     const paths = Object.getOwnPropertyNames(this.cachedHashChecksums);
                     let match = '';
 
                     for(let x = 0; x < paths.length; x++){
                         /**
-                         * 1. 
-                         * Paths are equal
-                         * k[x] === path
+                         * 1. If the given path are equal with the path given from compiling directory
                          * 
-                         * 2.
-                         * Checksum of the save match are the same
-                         * this.cachedHashChecksums[c] === hashCachedFile
+                         * 2. If the mages checksum are equal with the checksum from the file
                          */
-                        if(paths[x] === c && this.cachedHashChecksums[c] === hashCachedFile){
-                            match = hashCachedFile;
+                        if(paths[x] === fullFilePath && this.cachedHashChecksums[fullFilePath] === hashFromCurrentFile){
+                            match = hashFromCurrentFile;
+                            break;
                         }
                     }
-
+                    /**
+                     * Found match, so do not compile it again
+                     */
                     if('' !== match){
-                        this.logger(`Copy file from cache: ${c}`);
+                        this.logger(`Copy file from cache: ${fullFilePath}: ${hashFromCurrentFile}`);
+
+                        if(true === this.getRemoveTargetIfExists() && this.fileExists(`${destination}/${filename}`)){
+                            fs.unlinkSync(`${destination}/${filename}`);
+                        }
 
                         await self.Async(
                             gulp
-                                .src(c)
+                                .src(fullFilePath)
                                 .pipe(gulp.dest(destination)
                             )
                         );
-
-                        if(!hashCachedFile.length){
-                            hashCachedFile = await this.calculateHash(c);
-                        }
-    
-                        this.cachedHashChecksumsTemp[c] = hashCachedFile;
+                        
+                        /**
+                         * Write to an temporary new created object
+                         */
+                        this.cachedHashChecksumsTemp[fullFilePath] = hashFromCurrentFile;
                         return resolve(true);
                     }
                 }
 
-                this.logger(`Compiling image: ${source}`);
+                /**
+                 * Match not found so compile it
+                 */
+                this.logger(`Compiling image: ${source}: ${hashFromCurrentFile}`);
                 let compiled = false;
-
                 /**
                  * Compress images
                  */
@@ -375,8 +377,11 @@ class CompressImagesAll {
                     );
 
                     compiled = true;
-                }
-
+                } 
+                /**
+                 * Just move current unsupported file to the 
+                 * destination 
+                 */
                 if( (this.getExtensions().includes(ext) || this.getExtensions().includes('all')) && false === compiled){
                     await self.Async(
                         gulp
@@ -385,31 +390,31 @@ class CompressImagesAll {
                         )
                     );
                 }
+                /**
+                 * If we not have a hash from cached file
+                 * then generate one
+                 */
+                if(true == compiled){
+                    /**
+                     * Save generated hash of hashed file
+                     * 
+                     * [
+                     *  "/tmp/compress-images-all/2.jpg" = "cabfdf3be79ed370ccf6b18ec332926...",
+                     *  "/tmp/compress-images-all/3.jpg" = "81e80813d79b356a4169ec9dsaqdas3..."
+                     * ]
+                     */
+                    this.cachedHashChecksumsTemp[fullFilePath] = hashFromCurrentFile;
 
-                if(!hashCachedFile.length){
-                    hashCachedFile = await this.calculateHash(c);
+                    /**
+                     * Copy from cache to origin destination
+                     */                    
+                    await self.Async(
+                        gulp
+                            .src(cachedPath)
+                            .pipe(gulp.dest(destination)
+                        )
+                    );
                 }
-                
-                /**
-                 * Save generated hash of hashed file
-                 * 
-                 * [
-                 *  "/tmp/compress-images-all/2.jpg" = "cabfdf3be79ed370ccf6b18ec332926...",
-                 *  "/tmp/compress-images-all/3.jpg" = "81e80813d79b356a4169ec9dsaqdas3..."
-                 * ]
-                 */
-                this.cachedHashChecksums[c] = hashCachedFile;
-                this.cachedHashChecksumsTemp[c] = hashCachedFile;
-
-                /**
-                 * Copy from cache to origin destination
-                 */
-                await self.Async(
-                    gulp
-                        .src(c)
-                        .pipe(gulp.dest(destination)
-                    )
-                );
 
                 resolve(true);
             }
@@ -520,7 +525,10 @@ class CompressImagesAll {
 
                     compiled = true;
                 }
-
+                /**
+                 * Just move some file
+                 * thats currently not supported 
+                 */
                 if( (this.getExtensions().includes(ext) || this.getExtensions().includes('all')) && false === compiled){
                     await self.Async(
                         gulp
@@ -539,24 +547,34 @@ class CompressImagesAll {
         });
     };
 
-    createCachedDirectory() {
+    /**
+     * Create cache directory
+     */
+    createCachedDirectory(): void {
         if (!fs.existsSync(this.getCachedDirectory())) {
             fs.mkdirSync(this.getCachedDirectory(), { 'recursive': true });
         }
     }
-
+    /**
+     * Log message to the stdout
+     */
     logger(message: string): void {
-        console.log('\x1b[33m', `${message}`);
+        if(this.getDisplayLogging()){
+            console.log('\x1b[33m', `${message}`);
+        }
     }
 
     /**
      * Each gulp process are an async process
      */
-    Async(p: any) {
+    Async(p: any): Promise<boolean> {
         return new Promise((res, rej) => p.on('error', (err: any) => rej(err)).on('end', () => res(true)));
     }
 
-    makeDir(destination = '') {
+    /**
+     * Create directory
+     */
+    makeDir(destination = ''): Promise<boolean>{
         return new Promise((resolve, reject) => {
 
             if (!destination) {
@@ -590,8 +608,12 @@ class CompressImagesAll {
         });
     }
 
-    getFiles(dir: string, files = {}) {
+    /**
+     * Read all files recurively from source path
+     */
+    getFiles(dir: string, files = {}): Promise< { [direcotry: string]: [ files: string[], count: number] } > {
         const self = this;
+
         return new Promise(async (resolve, reject) => {
             try {
                 const readSingleDirectory = async (d: string, f: { [key: string]: any }) => {
@@ -658,12 +680,15 @@ class CompressImagesAll {
         })
     };
 
-    getChecksums(): Promise<{[key: string]: any}>{
+    /**
+     * Get content of the checksum saved file
+     */
+    getChecksums(): Promise<{[directory: string]: string}>{
         return new Promise( resolve => {
             try{
-                fs.readFile( path.join(this.getCachedDirectory(), 'cachedHashChecksums.txt'), 'utf8', (e: any, data: string) => {
+                fs.readFile( path.join(this.getCachedDirectory(), `${this.getCacheFilename()}.txt`), 'utf8', (e: any, data: string) => {
                         if(e || 0 == data.length){
-                            resolve([]);
+                            resolve({});
                         } else {
                             try{
                                 const r: {[key: string]: string} = {};
@@ -686,48 +711,56 @@ class CompressImagesAll {
                     }
                 );
             } catch(e){
-                resolve([]);
+                resolve({});
             }
         });
     }
 
-    saveChecksums(cachedHashChecksums: { [key: string]: any }): Promise<boolean>{
+    /**
+     * Create an file to save new checksums
+     */
+    saveFileWithChecksums(cachedHashChecksums: { [key: string]: any }): Promise<boolean>{
         return new Promise( resolve => {
             try{
                 /**
                  * Open stream
                  */
-                const file = fs.createWriteStream(path.join(this.getCachedDirectory(), 'cachedHashChecksums.txt'));
-                /**
-                 * Handle error
-                 */
-                file.on('error', function(err: any) {
-                    console.error('Unable to write checksums of images to file.');
-                    throw new Error(err);
+                fs.unlink(path.join(this.getCachedDirectory(), `${this.getCacheFilename()}.txt`), () => {
+                    const file = fs.createWriteStream(path.join(this.getCachedDirectory(), `${this.getCacheFilename()}.txt`));
+                    /**
+                     * Handle error
+                     */
+                    file.on('error', function(err: any) {
+                        console.error('Unable to write checksums of images to file.');
+                        throw new Error(err);
+                    });
+                    /**
+                     * Get object keys
+                     */
+                    const paths = Object.getOwnPropertyNames(cachedHashChecksums);
+                    /**
+                     * Save each result to a single line
+                     */
+                     paths.map( path => {
+                        const hash = cachedHashChecksums[path];
+                        file.write(`${path}:::::${hash}` + '\n');
+                    });
+                    /**
+                     * End stream
+                     */
+                    file.end();
+    
+                    resolve(true);
                 });
-                /**
-                 * Get object keys
-                 */
-                const paths = Object.getOwnPropertyNames(cachedHashChecksums);
-                /**
-                 * Save each result to a single line
-                 */
-                 paths.map( path => {
-                    const hash = cachedHashChecksums[path];
-                    file.write(`${path}:::::${hash}` + '\n');
-                });
-                /**
-                 * End stream
-                 */
-                file.end();
-
-                resolve(true);
             } catch(e){
                 resolve(false);
             }
         });
     }
 
+    /**
+     * Check if file exists
+     */
     fileExists(filepath: string): boolean {
         let exists = true;
 
@@ -740,18 +773,137 @@ class CompressImagesAll {
         return exists;
     }
 
-    calculateHash(file: string): Promise<string> {
+    /**
+     * Calculate hash from a file
+     */
+    calculateHash(filePath: string): Promise<string> {
         return new Promise(async (resolve) => {
-            const c = await readFile(file, 'utf8');
-            const filename = file.split('/')[file.split('/').length-1];
+            /**
+             * File extension
+             */
+            let ext: string[] | string = filePath.split('.');
 
-            try{
-                resolve(
-                    //@ts-ignore
-                    crypto.createHash('sha256').update(c).digest('hex') + crypto.createHash('sha256').update(filename).digest('hex')
-                );
-            } catch(e){
-                resolve('');
+            if (undefined !== ext[ext.length - 1]) {
+                ext = ext[ext.length - 1];
+                ext = ext.toLowerCase();
+            }
+
+            //@ts-ignore
+            if(['jpg', 'jpeg', 'png'].includes(ext)){
+                try{
+                    imageHash(filePath, 16, true, (error: any, data: string) => {
+                        if(error){
+                            throw error;
+                        };
+                        
+                        resolve(data);
+                      });
+                } catch(e){
+                    resolve('');
+                }
+            } else {
+                resolve(filePath);
+            }
+        });
+    }
+
+    /**
+     * Root node
+     */
+     compress() {
+        const self = this;
+
+        return new Promise(async (resolve, reject) => {
+            const compress = async () => {
+                self.count += 1;
+
+                if (undefined === self.directories[self.count]) {
+                    resolve(true);
+                }
+                else {
+                    /**
+                     * Recursive loop
+                     */
+                    if (self.root[self.directories[self.count]].files.length == 0) {
+                        await self.compress();
+                    }
+                    else {
+                        /**
+                         * Process single path
+                         * Single path stored in this.root as object key with settings
+                         */
+                        await self.progressSingleDirectory(
+                            /**
+                             * Source directory
+                             */
+                            self.directories[self.count],
+                            /**
+                             * Single directory 
+                             */
+                            self.root[self.directories[self.count]],
+                        );
+                    }
+
+                    compress();
+                }
+            };
+
+            compress();
+        });
+    }
+
+    start() {
+        return new Promise(async (resolve, reject) => {
+            this.timeStart = performance.now();
+
+            try {
+
+                if('' !== this.getCachedDirectory() && !this.fileExists(this.getCachedDirectory())) {
+                    this.createCachedDirectory();
+                }                
+                /**
+                 * '/tmp/compress-images-all/1.jpg': '000003e01ff8ffff185c17ec642627f6324c13cc03e07beffcbf16f407e00660',
+                 * '/tmp/compress-images-all/2.jpg': 'e620ef60d938fd800000007e67ffe1ffe37f8f81f007e003e00370037c071fff',
+                 * '/tmp/compress-images-all/third/3.jpg': '7ff81c78007c01fc1ffc7ffc3e0000c0ffff09ff00e10008effce4fcc050c090'
+                 */
+                this.cachedHashChecksums = await this.getChecksums();
+                /**
+                 * Create nested object - result of reading source tree
+                 * 
+                 * {
+                 *   '/home/x9/Desktop/compress-images-all-main/public': {
+                 *       files: [
+                 *       '/home/x9/Desktop/compress-images-all-main/source/1.jpg',
+                 *       '/home/x9/Desktop/compress-images-all-main/source/2.jpg'
+                 *       ],
+                 *       count: 2,
+                 *       cachedPath: '/tmp/compress-images-all'
+                 *   },
+                 *   '/home/x9/Desktop/compress-images-all-main/public/third': {
+                 *       files: [ '/home/x9/Desktop/compress-images-all-main/source/third/3.jpg' ],
+                 *       count: 1,
+                 *       cachedPath: '/tmp/compress-images-all/third'
+                 *   }
+                 * }
+                 */
+                this.root = await this.getFiles(this.getSource());
+                this.directories = Object.keys(this.root);
+
+                if (!this.directories.length) {
+                    this.logger('[+] No files to proocess');
+                    return resolve(true);
+                }
+
+
+                this.logger(`[+] Processing directories: ${this.directories.length}`);
+                await this.compress();
+                this.timeEnd = performance.now();
+                this.logger(`\nTime:\n\tSeconds: ${(this.timeEnd - this.timeStart)/1000}\n\tMinutes: ${(this.timeEnd - this.timeStart)/1000/60}`);
+                resolve(true);
+            }
+            catch (e) {
+                this.logger(`[-] Error on process: ${e}`);
+                reject(e);
             }
         });
     }
