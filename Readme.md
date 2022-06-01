@@ -12,16 +12,20 @@
     
 ## Development and production build
 
-    # npm watch
+    ## To work on the module, run the watcher
+    
+    # npm
     npm run watch
     
-    # yarn watch
+    # yarn
     yarn run watch
 
-    # npm production build
+    ## To build an production file, run the production command
+    
+    # npm 
     npm run build
     
-    # yarn production build
+    # yarn
     yarn run build
 
 ## Usage with gulp
