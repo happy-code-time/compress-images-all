@@ -30,6 +30,8 @@ declare class CompressImagesAll {
     private timeStart;
     private timeEnd;
     private removeTargetIfExists;
+    private bits;
+    private hash;
     constructor();
     setSource(source?: string): CompressImagesAll;
     getSource(): string;
@@ -47,6 +49,10 @@ declare class CompressImagesAll {
     getCacheFilename(): string;
     setRemoveTargetIfExists(removeTargetIfExists: boolean): CompressImagesAll;
     getRemoveTargetIfExists(): boolean;
+    setBits(bits: number): CompressImagesAll;
+    getBits(): number;
+    setHash(hash: string): CompressImagesAll;
+    getHash(): string;
     progressSingleDirectory(directory: string, singleSourcePath: {
         cachedPath: string;
         files: string[];
