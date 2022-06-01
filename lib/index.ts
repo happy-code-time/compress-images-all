@@ -10,7 +10,7 @@ const fs = require('fs');
 const { readFile } = require('fs/promises')
 const { readdir } = fs.promises;
 const getPixels = require("get-pixels");
-const { imageHash }= require('image-hash');
+const imageHash = require('node-image-hash');
 //@ts-ignore
 const { performance } = require('perf_hooks');
 //@ts-ignore
@@ -33,6 +33,8 @@ class CompressImagesAll {
     private timeStart: any;
     private timeEnd: any;
     private removeTargetIfExists: boolean;
+    private bits: number;
+    private hash: string;
 
     constructor() {
         this.cacheDirectory = '';
@@ -49,6 +51,8 @@ class CompressImagesAll {
         this.displayLogging = false;
         this.cachedFilename = 'cachedFiles';
         this.removeTargetIfExists = false;
+        this.bits = 32;
+        this.hash = 'hex';
     }
 
     setSource(source: string = ''): CompressImagesAll {
@@ -147,6 +151,30 @@ class CompressImagesAll {
         return this.removeTargetIfExists;
     }
 
+    setBits(bits: number): CompressImagesAll {
+        if(typeof 1 === typeof bits){
+            this.bits = bits;
+        }
+
+        return this;
+    }
+
+    getBits(): number {
+        return this.bits;
+    }
+
+    setHash(hash: string): CompressImagesAll {
+        if(typeof '' === typeof hash){
+            this.hash = hash;
+        }
+
+        return this;
+    }
+
+    getHash(): string {
+        return this.hash;
+    }
+
     progressSingleDirectory(directory: string, singleSourcePath: { cachedPath: string, files: string[], count: number }) {
         const self = this;
         const { cachedPath, files, count } = singleSourcePath;
@@ -176,6 +204,17 @@ class CompressImagesAll {
                              * Save tmp file on the last loop
                              */
                             if(0 >= this.globalImagesCount){
+                                /**
+                                 * Close nodejs process from "node-image-hash"
+                                 * 
+                                 * Close all underlying workers. 
+                                 * If you use the asynchronous hashing algorithm, 
+                                 * you need to call this at the end of your program 
+                                 * to close all currently open workers. 
+                                 * Otherwise, your program may keep running until 
+                                 * manually interrupted.
+                                 */
+                                imageHash.close();
                                 /**
                                  * Calculate diff, to delete unwanted files from the cache directory
                                  */
@@ -791,15 +830,17 @@ class CompressImagesAll {
             //@ts-ignore
             if(['jpg', 'jpeg', 'png'].includes(ext)){
                 try{
-                    imageHash(filePath, 16, true, (error: any, data: string) => {
-                        if(error){
-                            throw error;
-                        };
-                        
-                        resolve(data);
-                      });
+                    imageHash
+                        .hash(filePath, this.getBits(), this.getHash())
+                        .then( (hash: { hash: string, type: string } ) => {
+                            resolve(hash.hash);
+                        })
+                        .catch( (e: any) => {
+                            this.logger(e);
+                            resolve(filePath);
+                        })
                 } catch(e){
-                    resolve('');
+                    resolve(filePath);
                 }
             } else {
                 resolve(filePath);
