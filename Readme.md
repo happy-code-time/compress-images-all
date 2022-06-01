@@ -9,6 +9,20 @@
 
     # yarn
     yarn add --dev compress-images-all
+    
+## Development and production build
+
+    # npm watch
+    npm run watch
+    
+    # yarn watch
+    yarn run watch
+
+    # npm production build
+    npm run build
+    
+    # yarn production build
+    yarn run build
 
 ## Usage with gulp
 
