@@ -105,6 +105,21 @@
             */
             .setRemoveTargetIfExists(true)
             /**
+             * Based on the node-image-hash module.
+             * The number of bits in a row. The more bits, the more unique the hash.
+             * 
+             * Default: 32
+             */
+            .setBits(24)
+            /**
+             * Based on the node-image-hash module.
+             * 
+             * Available hash types:  hex, latin1, base64, binary
+             * 
+             * Default: 'hex'
+             */
+            .setHash('base64')
+            /**
             * The start function return an Promise
             */
             .start()
@@ -218,6 +233,21 @@
             */
             .setRemoveTargetIfExists(true)
             /**
+             * Based on the node-image-hash module.
+             * The number of bits in a row. The more bits, the more unique the hash.
+             * 
+             * Default: 32
+             */
+            .setBits(24)
+            /**
+             * Based on the node-image-hash module.
+             * 
+             * Available hash types:  hex, latin1, base64, binary
+             * 
+             * Default: 'hex'
+             */
+            .setHash('base64')
+            /**
             * The start function return an Promise
             */
             .start()
@@ -235,3 +265,92 @@
             });
         }
     )();
+
+# Image compression test with different bit value and hash algorithm
+
+    - Size before each compression for 261 images was 184.5MB
+    - Size after each compression for 261 images was 103.6MB
+
+## Algorithm: hex
+
+    - 32 bits
+        - compression time before cache:
+
+            - Seconds: 467.6469287039996
+            - Minutes: 7.794115478399993
+
+        - compression time with cache support:
+        
+            - Seconds: 157.7575704399999
+            - Minutes: 2.629292840666665
+
+        - with cache support and current algorithm we are saving -66,4% time
+
+    - 8 bits
+        - compression time before cache:
+
+            - Seconds: 599.7059878739994
+            - Minutes: 9.995099797899991
+
+        - compression time with cache support:
+            
+            - Seconds: 179.34185507800058
+            - Minutes: 2.989030917966676
+
+        - with cache support and current algorithm we are saving -66,4% time
+
+## Algorithm: binary
+
+    - 16 bits
+        - compression time before cache:
+
+            - Seconds: 771.4073649600009
+            - Minutes: 12.856789416000016
+
+        - compression time with cache support:
+        
+            - Seconds: 168.5473699519988
+            - Minutes: 2.8091228325333133
+
+        - with cache support and current algorithm we are saving -78,3% time
+
+    - 8 bits
+        - compression time before cache:
+
+            - Seconds: 481.86986221899974
+            - Minutes: 8.031164370316663
+
+        - compression time with cache support:
+            
+            - Seconds: 169.41651245300005
+            - Minutes: 2.8236085408833342
+
+        - with cache support and current algorithm we are saving -64,8% time
+
+## Algorithm: base64
+
+    - 16 bits
+        - compression time before cache:
+
+            - Seconds: 553.5850434539998
+            - Minutes: 9.226417390899996
+
+        - compression time with cache support:
+        
+            - Seconds: 194.11663765199947
+            - Minutes: 3.235277294199991
+
+        - with cache support and current algorithm we are saving -65% time
+
+    - 8 bits
+        - compression time before cache:
+
+            - Seconds: 595.3672284929994
+            - Minutes: 9.92278714154999
+
+        - compression time with cache support:
+            
+            - Seconds: 163.12936889700032
+            - Minutes: 2.718822814950005
+
+        - with cache support and current algorithm we are saving -72,7% time
