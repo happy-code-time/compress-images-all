@@ -91,6 +91,21 @@ const CompressImagesAll = require('.');
          */
         .setRemoveTargetIfExists(true)
         /**
+         * Based on the node-image-hash module.
+         * The number of bits in a row. The more bits, the more unique the hash.
+         * 
+         * Default: 32
+         */
+        .setBits(24)
+        /**
+         * Based on the node-image-hash module.
+         * 
+         * Available hash types:  hex, latin1, base64, binary
+         * 
+         * Default: 'hex'
+         */
+        .setHash('hex')
+        /**
          * The start function return an Promise
          */
         .start()
