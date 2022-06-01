@@ -1,8 +1,12 @@
 const path = require('path');
 const CompressImagesAll = require('.');
-
 (
     async () => {
+
+        const loggingCallback = (message) => {
+            console.log(message);
+        };
+        
         /**
          * New instance
          */
@@ -105,6 +109,23 @@ const CompressImagesAll = require('.');
          * Default: 'hex'
          */
         .setHash('hex')
+        /**
+         * Generate, based on the original source image an webp file
+         * 
+         * If you are using the cache mechanism, the image are not compiled
+         * from the cache and compressed image, but from the original source
+         * 
+         * Default: false
+         */
+        .setGenerateWebp(true)
+        /**
+         * Custom callback function to handle messages from module
+         * 
+         * Only available if logging enabled
+         * 
+         * Default: undefined (using internal console.log)
+         */
+        .setLoggingCallback(loggingCallback)
         /**
          * The start function return an Promise
          */

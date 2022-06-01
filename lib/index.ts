@@ -1,20 +1,17 @@
 const gulp = require("gulp");
 const imagemin = require("gulp-imagemin");
-const svgmin = require("gulp-svgmin");
-const jpeg = require('imagemin-jpeg-recompress');
 const optipng = require('imagemin-optipng');
 const gifsicle = require('imagemin-gifsicle');
+const svg = require('gulp-svgmin');
 const path = require('path');
-const resolvePath = path.resolve;
 const fs = require('fs');
-const { readFile } = require('fs/promises')
-const { readdir } = fs.promises;
-const getPixels = require("get-pixels");
 const imageHash = require('node-image-hash');
+const jpeg = require('imagemin-jpeg-recompress');
+const webp = require('gulp-webp');
+const resolvePath = path.resolve;
+const { readdir } = fs.promises;
 //@ts-ignore
 const { performance } = require('perf_hooks');
-//@ts-ignore
-const crypto = require("crypto");
 
 class CompressImagesAll {
     private cacheDirectory: string;
@@ -35,6 +32,8 @@ class CompressImagesAll {
     private removeTargetIfExists: boolean;
     private bits: number;
     private hash: string;
+    private generateWebp: boolean;
+    private loggingCallback: any;
 
     constructor() {
         this.cacheDirectory = '';
@@ -53,6 +52,8 @@ class CompressImagesAll {
         this.removeTargetIfExists = false;
         this.bits = 32;
         this.hash = 'hex';
+        this.generateWebp = false;
+        this.loggingCallback = undefined;
     }
 
     setSource(source: string = ''): CompressImagesAll {
@@ -175,6 +176,30 @@ class CompressImagesAll {
         return this.hash;
     }
 
+    setGenerateWebp(generateWebp: boolean): CompressImagesAll {
+        if(typeof true === typeof generateWebp){
+            this.generateWebp = generateWebp;
+        }
+
+        return this;
+    }
+    
+    getGenerateWebp(): boolean {
+        return this.generateWebp;
+    }
+
+    setLoggingCallback(loggingCallback: any): CompressImagesAll {
+        if(typeof function(){} === typeof loggingCallback){
+            this.loggingCallback = loggingCallback;
+        }
+
+        return this;
+    }
+    
+    getLoggingCallback(): boolean {
+        return this.loggingCallback;
+    }
+
     progressSingleDirectory(directory: string, singleSourcePath: { cachedPath: string, files: string[], count: number }) {
         const self = this;
         const { cachedPath, files, count } = singleSourcePath;
@@ -268,7 +293,7 @@ class CompressImagesAll {
         return new Promise(async (resolve, reject) => {
             try {
                 this.globalImagesCount -= 1;
-                this.logger(`${this.globalImagesCount}`);
+                this.logger(`Images left: ${this.globalImagesCount}`);
                 /**
                  * Get filename
                  */
@@ -277,11 +302,11 @@ class CompressImagesAll {
                 /**
                  * File extension
                  */
-                let ext: string[] | string = source.split('.');
+                let ext: string = '';
+                let extension: string[] = source.split('.');
 
-                if (undefined !== ext[ext.length - 1]) {
-                    ext = ext[ext.length - 1];
-                    ext = ext.toLowerCase();
+                if (undefined !== extension[extension.length - 1]) {
+                    ext = extension[extension.length-1].toLowerCase();
                 }
                 /**
                  * Cached file path
@@ -316,7 +341,7 @@ class CompressImagesAll {
                      * Found match, so do not compile it again
                      */
                     if('' !== match){
-                        this.logger(`Copy file from cache: ${fullFilePath}: ${hashFromCurrentFile}`);
+                        this.logger(`\tCopy file from cache: ${fullFilePath}`);
 
                         if(true === this.getRemoveTargetIfExists() && this.fileExists(`${destination}/${filename}`)){
                             fs.unlinkSync(`${destination}/${filename}`);
@@ -340,33 +365,38 @@ class CompressImagesAll {
                 /**
                  * Match not found so compile it
                  */
-                this.logger(`Compiling image: ${source}: ${hashFromCurrentFile}`);
+                this.logger(`\tOrigin: ${source}`);
                 let compiled = false;
                 /**
                  * Compress images
                  */
-                if ('svg' === ext) {
-                    await self.Async(
-                        gulp
-                            .src(source)
-                            .pipe(svgmin())
-                            .pipe(gulp.dest(cachedPath)
-                        )
-                    );
+                if (['png', 'jpg', 'jpeg', 'gif'].includes(ext)) {
+                    this.logger(`\tCache: ${cachedPath}`);
 
-                    compiled = true;
-                }
-
-                if ('png' == ext) {
                     await self.Async(
                         gulp
                             .src(source)
                             .pipe(
-                                imagemin([
-                                    optipng({
-                                        progressive: true,
-                                    }),
-                                ]),
+                                imagemin(
+                                    [
+                                        jpeg(),
+                                        optipng(
+                                            {
+                                                bitDepthReduction: true,
+                                                colorTypeReduction: true,
+                                                optimizationLevel: 3,
+                                                paletteReduction: true,
+                                            }
+                                        ),
+                                        //@ts-ignore
+                                        gifsicle(
+                                            {
+                                                interlaced: true,
+                                                optimizationLevel: 3,
+                                            }
+                                        ),
+                                    ]
+                                ),
                             )
                             .pipe(gulp.dest(cachedPath)
                         )
@@ -375,30 +405,27 @@ class CompressImagesAll {
                     compiled = true;
                 }
 
-                if ('jpg' == ext || 'jpeg' == ext) {
+                if ('svg' == ext) {
+                    this.logger(`\tCache: ${cachedPath}`);
+
                     await self.Async(
                         gulp
                             .src(source)
                             .pipe(
-                                imagemin([
-                                    jpeg(),
-                                ]),
-                            )
-                            .pipe(gulp.dest(cachedPath)
-                        )
-                    );
-
-                    compiled = true;
-                }
-
-                if ('gif' == ext) {
-                    await self.Async(
-                        gulp
-                            .src(source)
-                            .pipe(
-                                imagemin([
-                                    gifsicle(),
-                                ]),
+                                svg(
+                                    {
+                                        plugins: [
+                                            {
+                                                name: 'preset-default',
+                                                params: {
+                                                    overrides: {
+                                                        cleanupIDs: false
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ),
                             )
                             .pipe(gulp.dest(cachedPath)
                         )
@@ -408,6 +435,8 @@ class CompressImagesAll {
                 }
 
                 if ('ico' == ext) {
+                    this.logger(`\tCache: ${cachedPath}`);
+
                     await self.Async(
                         gulp
                             .src(source)
@@ -417,11 +446,14 @@ class CompressImagesAll {
 
                     compiled = true;
                 } 
+
                 /**
                  * Just move current unsupported file to the 
                  * destination 
                  */
                 if( (this.getExtensions().includes(ext) || this.getExtensions().includes('all')) && false === compiled){
+                    this.logger(`\tCache: ${cachedPath}`);
+
                     await self.Async(
                         gulp
                             .src(source)
@@ -446,10 +478,27 @@ class CompressImagesAll {
 
                     /**
                      * Copy from cache to origin destination
-                     */                    
+                    */
+                    this.logger(`\tCache source: ${fullFilePath}`);
+                    this.logger(`\tDestination: ${destination}`);
+
                     await self.Async(
                         gulp
-                            .src(cachedPath)
+                            .src(fullFilePath)
+                            .pipe(gulp.dest(destination)
+                        )
+                    );
+                }
+
+                if(this.getGenerateWebp()){
+                    this.logger(`\tWebp: true`);
+
+                    await self.Async(
+                        gulp
+                            .src(source)
+                            .pipe(
+                                webp()
+                            )
                             .pipe(gulp.dest(destination)
                         )
                     );
@@ -470,7 +519,7 @@ class CompressImagesAll {
         return new Promise(async (resolve, reject) => {
             try {
                 this.globalImagesCount -= 1;
-                this.logger(`${this.globalImagesCount}`);
+                this.logger(`Images left: ${this.globalImagesCount}`);
                 /**
                  * Get filename
                  */
@@ -479,41 +528,46 @@ class CompressImagesAll {
                 /**
                  * File extension
                  */
-                let ext: string[] | string = source.split('.');
+                let ext: string = '';
+                let extension: string[] = source.split('.');
 
-                if (undefined !== ext[ext.length - 1]) {
-                    ext = ext[ext.length - 1];
-                    ext = ext.toLowerCase();
+                if (undefined !== extension[extension.length - 1]) {
+                    ext = extension[extension.length-1].toLowerCase();
                 }
 
-                this.logger(`Compiling image: ${source}`);
+                this.logger(`\tOrigin: ${source}`);
                 let compiled = false;
 
                 /**
                  * Compress images
                  */
-                if ('svg' === ext) {
-                    await self.Async(
-                        gulp
-                            .src(source)
-                            .pipe(svgmin())
-                            .pipe(gulp.dest(destination)
-                        )
-                    );
-
-                    compiled = true;
-                }
-
-                if ('png' == ext) {
+                if (['png', 'jpg', 'jpeg', 'gif'].includes(ext)) {
+                    this.logger(`\tDestination: ${destination}`);
+                    
                     await self.Async(
                         gulp
                             .src(source)
                             .pipe(
-                                imagemin([
-                                    optipng({
-                                        progressive: true,
-                                    }),
-                                ]),
+                                imagemin(
+                                    [
+                                        jpeg(),
+                                        optipng(
+                                            {
+                                                bitDepthReduction: true,
+                                                colorTypeReduction: true,
+                                                optimizationLevel: 3,
+                                                paletteReduction: true,
+                                            }
+                                        ),
+                                    ]
+                                ),
+                                //@ts-ignore
+                                gifsicle(
+                                    {
+                                        interlaced: true,
+                                        optimizationLevel: 3,
+                                    }
+                                ),
                             )
                             .pipe(gulp.dest(destination)
                         )
@@ -522,30 +576,27 @@ class CompressImagesAll {
                     compiled = true;
                 }
 
-                if ('jpg' == ext || 'jpeg' == ext) {
+                if ('svg' == ext) {
+                    this.logger(`\tDestination: ${destination}`);
+
                     await self.Async(
                         gulp
                             .src(source)
                             .pipe(
-                                imagemin([
-                                    jpeg(),
-                                ]),
-                            )
-                            .pipe(gulp.dest(destination)
-                        )
-                    );
-
-                    compiled = true;
-                }
-
-                if ('gif' == ext) {
-                    await self.Async(
-                        gulp
-                            .src(source)
-                            .pipe(
-                                imagemin([
-                                    gifsicle(),
-                                ]),
+                                svg(
+                                    {
+                                        plugins: [
+                                            {
+                                                name: 'preset-default',
+                                                params: {
+                                                    overrides: {
+                                                        cleanupIDs: false
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ),
                             )
                             .pipe(gulp.dest(destination)
                         )
@@ -555,6 +606,8 @@ class CompressImagesAll {
                 }
 
                 if ('ico' == ext) {
+                    this.logger(`\tDestination: ${destination}`);
+
                     await self.Async(
                         gulp
                             .src(source)
@@ -564,14 +617,31 @@ class CompressImagesAll {
 
                     compiled = true;
                 }
+
                 /**
                  * Just move some file
                  * thats currently not supported 
                  */
                 if( (this.getExtensions().includes(ext) || this.getExtensions().includes('all')) && false === compiled){
+                    this.logger(`\tDestination: ${destination}`);
+
                     await self.Async(
                         gulp
                             .src(source)
+                            .pipe(gulp.dest(destination)
+                        )
+                    );
+                }
+
+                if(this.getGenerateWebp()){
+                    this.logger(`\tWebp: true`);
+
+                    await self.Async(
+                        gulp
+                            .src(source)
+                            .pipe(
+                                webp()
+                            )
                             .pipe(gulp.dest(destination)
                         )
                     );
@@ -599,7 +669,12 @@ class CompressImagesAll {
      */
     logger(message: string): void {
         if(this.getDisplayLogging()){
-            console.log('\x1b[32m', `${message}`);
+            if(this.getLoggingCallback()){
+                //@ts-ignore
+                (this.getLoggingCallback())(message);
+            } else {
+                console.log('\x1b[32m', `${message}`);
+            }
         }
     }
 
@@ -636,6 +711,8 @@ class CompressImagesAll {
                             }
                         }
                     );
+
+                    this.logger(`Creating directory: ${destination}`);
                 }
                 else {
                     resolve(true);
@@ -678,13 +755,12 @@ class CompressImagesAll {
                         }
                         else {
                             let extension = res.split('.');
-                            extension = extension[extension.length - 1];
-                            extension = extension.toLowerCase();
+                            let ext = extension[extension.length - 1].toLowerCase();
 
                             /**
                              * Append file names to the object holder
                              */
-                            if (2 <= res.length || (this.getExtensions().includes(extension) || this.getExtensions().includes('all'))) {
+                            if (2 <= res.length || (this.getExtensions().includes(ext) || this.getExtensions().includes('all'))) {
                                 this.globalImagesCount += 1;
                                 f[destination].files.push(res);
 
@@ -696,6 +772,7 @@ class CompressImagesAll {
                                     f[destination].cachedPath = `${this.getCachedDirectory()}${c}`;
 
                                     await self.makeDir(f[destination].cachedPath);
+                                    await self.makeDir(destination);
                                 } else {
                                     f[destination].cachedPath = '';
                                 }

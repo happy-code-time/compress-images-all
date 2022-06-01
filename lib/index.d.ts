@@ -1,18 +1,16 @@
 declare const gulp: any;
 declare const imagemin: any;
-declare const svgmin: any;
-declare const jpeg: any;
 declare const optipng: any;
 declare const gifsicle: any;
+declare const svg: any;
 declare const path: any;
-declare const resolvePath: any;
 declare const fs: any;
-declare const readFile: any;
-declare const readdir: any;
-declare const getPixels: any;
 declare const imageHash: any;
+declare const jpeg: any;
+declare const webp: any;
+declare const resolvePath: any;
+declare const readdir: any;
 declare const performance: any;
-declare const crypto: any;
 declare class CompressImagesAll {
     private cacheDirectory;
     private source;
@@ -32,6 +30,8 @@ declare class CompressImagesAll {
     private removeTargetIfExists;
     private bits;
     private hash;
+    private generateWebp;
+    private loggingCallback;
     constructor();
     setSource(source?: string): CompressImagesAll;
     getSource(): string;
@@ -53,6 +53,10 @@ declare class CompressImagesAll {
     getBits(): number;
     setHash(hash: string): CompressImagesAll;
     getHash(): string;
+    setGenerateWebp(generateWebp: boolean): CompressImagesAll;
+    getGenerateWebp(): boolean;
+    setLoggingCallback(loggingCallback: any): CompressImagesAll;
+    getLoggingCallback(): boolean;
     progressSingleDirectory(directory: string, singleSourcePath: {
         cachedPath: string;
         files: string[];
