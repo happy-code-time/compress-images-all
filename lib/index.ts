@@ -377,6 +377,20 @@ class CompressImagesAll {
                                 .pipe(gulp.dest(destination)
                             )
                         );
+
+                        if(this.getGenerateWebp()){
+                            this.logger(`Creating webp`);
+        
+                            await self.Async(
+                                gulp
+                                    .src(source)
+                                    .pipe(
+                                        webp()
+                                    )
+                                    .pipe(gulp.dest(destination)
+                                )
+                            );
+                        }
                         
                         /**
                          * Write to an temporary new created object
@@ -542,8 +556,6 @@ class CompressImagesAll {
                         });
                     }
 
-
-                    
                     if(this.fileExists(hashFilename)){
                         fs.unlink(path.join(this.getCachedDirectory(), hashFilename), async () => {
                             await createFile(hashFilename, hashFromCurrentFile);
