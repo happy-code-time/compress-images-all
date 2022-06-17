@@ -10,6 +10,7 @@ declare const jpeg: any;
 declare const webp: any;
 declare const md5: any;
 declare const cache: any;
+declare const avif: any;
 declare const resolvePath: any;
 declare const readdir: any;
 declare const performance: any;
@@ -34,8 +35,12 @@ declare class CompressImagesAll {
     private algorithmBits;
     private algorithmHash;
     private generateWebp;
+    private generateAvif;
     private loggingCallback;
     private cacheAlgorithm;
+    private webpOptions;
+    private avifOptions;
+    private clearGulpCache;
     constructor();
     setSource(source?: string): CompressImagesAll;
     getSource(): string;
@@ -59,10 +64,26 @@ declare class CompressImagesAll {
     getAlgorithmHash(): string;
     setGenerateWebp(generateWebp: boolean): CompressImagesAll;
     getGenerateWebp(): boolean;
+    setGenerateAvif(generateAvif: boolean): CompressImagesAll;
+    getGenerateAvif(): boolean;
     setLoggingCallback(loggingCallback: any): CompressImagesAll;
     getLoggingCallback(): boolean;
     setCacheAlgorithm(cacheAlgorithm: string): CompressImagesAll;
     getCacheAlgorithm(): string;
+    setWebpOptions(webpOptions: {
+        [key: string]: any;
+    }): CompressImagesAll;
+    getWebpOptions(): {
+        [key: string]: any;
+    };
+    setAvifOptions(avifOptions: {
+        [key: string]: any;
+    }): CompressImagesAll;
+    getAvifOptions(): {
+        [key: string]: any;
+    };
+    setClearGulpCache(clearGulpCache: boolean): CompressImagesAll;
+    getClearGulpCache(): boolean;
     progressSingleDirectory(directory: string, singleSourcePath: {
         cachedPath: string;
         files: string[];

@@ -117,6 +117,13 @@
             */
             .setCacheAlgorithm('gulp-cache')
             /**
+             * If using a other name as 'custom', then the gulp-cache process/module are used and
+             * you can clear the cache - see https://www.npmjs.com/package/gulp-cache
+             *
+             * Default: false
+             */
+            .setClearGulpCache(true)
+            /**
             * Enable console output.
             * 
             * Default: false
@@ -164,11 +171,44 @@
              * 
              * If you are using the cache mechanism, the image are not compiled
              * from the cache and compressed image, but from the original source
-             *
              * 
              * Default: false
              */
             .setGenerateWebp(true)
+            /**
+             * If setGenerateWebp are true then you can pass custom options based
+             * on the module https://www.npmjs.com/package/gulp-webp
+             * 
+             * Default: {}
+             */
+            .setWebpOptions(
+                {
+                    quality: 50,
+                    lossless: false,
+                }
+            )
+            /**
+             * Generate, based on the original source image an avif file
+             * 
+             * If you are using the cache mechanism, the image are not compiled
+             * from the cache and compressed image, but from the original source
+             * 
+             * Default: false
+             */
+            .setGenerateAvif(true)
+            /**
+             * If setGenerateAvif are true then you can pass custom options based
+             * on the module https://www.npmjs.com/package/gulp-avif
+             * 
+             * Default: {}
+             */
+            .setAvifOptions(
+                {
+                    quality: 50,
+                    lossless: false,
+                    speed: 8,
+                }
+            )
             /**
              * Custom callback function to handle messages from module
              * 

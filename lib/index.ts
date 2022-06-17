@@ -10,6 +10,7 @@ const jpeg = require('imagemin-jpeg-recompress');
 const webp = require('gulp-webp');
 const md5 = require("md5");
 const cache = require('gulp-cache');
+const avif = require('gulp-avif');
 const resolvePath = path.resolve;
 const { readdir } = fs.promises;
 //@ts-ignore
@@ -36,8 +37,12 @@ class CompressImagesAll {
     private algorithmBits: number;
     private algorithmHash: string;
     private generateWebp: boolean;
+    private generateAvif: boolean;
     private loggingCallback: any;
     private cacheAlgorithm: string;
+    private webpOptions: { [key: string]: any };
+    private avifOptions: { [key: string]: any };
+    private clearGulpCache: boolean;
 
     constructor() {
         this.cacheDirectory = '';
@@ -58,8 +63,16 @@ class CompressImagesAll {
         this.algorithmBits = 32;
         this.algorithmHash = 'hex';
         this.generateWebp = false;
+        this.generateAvif = false;
         this.loggingCallback = undefined;
         this.cacheAlgorithm = 'custom';
+        this.webpOptions = {
+
+        };
+        this.avifOptions = {
+
+        };
+        this.clearGulpCache = false;
     }
 
     setSource(source: string = ''): CompressImagesAll {
@@ -194,6 +207,18 @@ class CompressImagesAll {
         return this.generateWebp;
     }
 
+    setGenerateAvif(generateAvif: boolean): CompressImagesAll {
+        if(typeof true === typeof generateAvif){
+            this.generateAvif = generateAvif;
+        }
+
+        return this;
+    }
+    
+    getGenerateAvif(): boolean {
+        return this.generateAvif;
+    }
+
     setLoggingCallback(loggingCallback: any): CompressImagesAll {
         if(typeof function(){} === typeof loggingCallback){
             this.loggingCallback = loggingCallback;
@@ -218,6 +243,42 @@ class CompressImagesAll {
         return this.cacheAlgorithm;
     }
 
+    setWebpOptions(webpOptions: { [key: string]: any } ): CompressImagesAll {
+        if(typeof {} === typeof webpOptions){
+            this.webpOptions = webpOptions;
+        }
+
+        return this;
+    }
+    
+    getWebpOptions(): { [key: string]: any } {
+        return this.webpOptions;
+    }
+
+    setAvifOptions(avifOptions: { [key: string]: any } ): CompressImagesAll {
+        if(typeof {} === typeof avifOptions){
+            this.avifOptions = avifOptions;
+        }
+
+        return this;
+    }
+    
+    getAvifOptions(): { [key: string]: any } {
+        return this.avifOptions;
+    }
+
+    setClearGulpCache(clearGulpCache: boolean): CompressImagesAll {
+        if(typeof true === typeof clearGulpCache){
+            this.clearGulpCache = clearGulpCache;
+        }
+
+        return this;
+    }
+    
+    getClearGulpCache(): boolean {
+        return this.clearGulpCache;
+    }
+
     progressSingleDirectory(directory: string, singleSourcePath: { cachedPath: string, files: string[], count: number }) {
         const self = this;
         const { cachedPath, files, count } = singleSourcePath;
@@ -226,6 +287,16 @@ class CompressImagesAll {
             try {
                 if (await self.makeDir(directory)) {
                     let i = -1;
+
+                    if('' == this.getCachedDirectory()){
+                        this.logger(`[NO CACHE] Processing directory ${directory}`);
+                    } else {
+                        if('custom' === this.getCacheAlgorithm()){
+                            this.logger(`[CUSTOM CACHE] Processing directory ${directory}`);
+                        } else {
+                            this.logger(`[GULP-CACHE] Processing directory ${directory}`);
+                        }
+                    }
 
                     /**
                      * Recursive loop
@@ -385,7 +456,21 @@ class CompressImagesAll {
                                 gulp
                                     .src(source)
                                     .pipe(
-                                        webp()
+                                        webp(this.getWebpOptions())
+                                    )
+                                    .pipe(gulp.dest(destination)
+                                )
+                            );
+                        }
+
+                        if(this.getGenerateAvif() && ['png', 'jpg', 'jpeg'].includes(ext)){
+                            this.logger(`Creating avif`);
+        
+                            await self.Async(
+                                gulp
+                                    .src(source)
+                                    .pipe(
+                                        avif(this.getAvifOptions())
                                     )
                                     .pipe(gulp.dest(destination)
                                 )
@@ -572,7 +657,21 @@ class CompressImagesAll {
                         gulp
                             .src(source)
                             .pipe(
-                                webp()
+                                webp(this.getWebpOptions())
+                            )
+                            .pipe(gulp.dest(destination)
+                        )
+                    );
+                }
+
+                if(this.getGenerateAvif() && ['png', 'jpg', 'jpeg'].includes(ext)){
+                    this.logger(`Creating avif`);
+
+                    await self.Async(
+                        gulp
+                            .src(source)
+                            .pipe(
+                                avif(this.getAvifOptions())
                             )
                             .pipe(gulp.dest(destination)
                         )
@@ -613,6 +712,34 @@ class CompressImagesAll {
                  * Match not found so compile it
                  */
                 this.logger(`Processing ${source}`);
+                
+                if(this.getGenerateWebp()){
+                    this.logger(`Creating webp`);
+
+                    await self.Async(
+                        gulp
+                            .src(source)
+                            .pipe(
+                                webp(this.getWebpOptions())
+                            )
+                            .pipe(gulp.dest(destination)
+                        )
+                    );
+                }
+
+                if(this.getGenerateAvif() && ['png', 'jpg', 'jpeg'].includes(ext)){
+                    this.logger(`Creating avif`);
+
+                    await self.Async(
+                        gulp
+                            .src(source)
+                            .pipe(
+                                avif(this.getAvifOptions())
+                            )
+                            .pipe(gulp.dest(destination)
+                        )
+                    );
+                }
                 /**
                  * Compress images
                  */
@@ -696,25 +823,6 @@ class CompressImagesAll {
                         )
                     ;
                 } 
-
-                if(this.getGenerateWebp()){
-                    this.logger(`Creating webp`);
-
-                    await self.Async(
-                        gulp
-                            .src(source)
-                            .pipe(
-                                cache(
-                                    webp(),
-                                    {
-                                        fileCache: new cache.Cache({ cacheDirName: this.getCachedDirectory() })
-                                    }
-                                )
-                            )
-                            .pipe(gulp.dest(destination)
-                        )
-                    );
-                }
 
                 resolve(true);
             }
@@ -852,13 +960,27 @@ class CompressImagesAll {
                 }
 
                 if(this.getGenerateWebp()){
-                    this.logger(`Creating Webp`);
+                    this.logger(`Creating webp`);
 
                     await self.Async(
                         gulp
                             .src(source)
                             .pipe(
-                                webp()
+                                webp(this.getWebpOptions())
+                            )
+                            .pipe(gulp.dest(destination)
+                        )
+                    );
+                }
+
+                if(this.getGenerateAvif() && ['png', 'jpg', 'jpeg'].includes(ext)){
+                    this.logger(`Creating avif`);
+
+                    await self.Async(
+                        gulp
+                            .src(source)
+                            .pipe(
+                                avif(this.getAvifOptions())
                             )
                             .pipe(gulp.dest(destination)
                         )
@@ -930,7 +1052,7 @@ class CompressImagesAll {
                         }
                     );
 
-                    this.logger(`Creating directory: ${destination}`);
+                    this.logger(`mkdir: ${destination}`);
                 }
                 else {
                     resolve(true);
@@ -989,7 +1111,10 @@ class CompressImagesAll {
                                 if('' !== this.getCachedDirectory()){
                                     f[destination].cachedPath = `${this.getCachedDirectory()}${c}`;
 
-                                    await self.makeDir(f[destination].cachedPath);
+                                    if('custom' === this.getCacheAlgorithm()){
+                                        await self.makeDir(f[destination].cachedPath);
+                                    }
+
                                     await self.makeDir(destination);
                                 } else {
                                     f[destination].cachedPath = '';
@@ -1234,6 +1359,11 @@ class CompressImagesAll {
                 this.logger(`[+] Processing directories: ${this.directories.length}`);
                 this.max = this.globalImagesCount;
                 this.globalImagesCount = 0;
+
+                if('' !== this.getCachedDirectory() && 'custom' !== this.getCacheAlgorithm() && true === this.getClearGulpCache()){
+                    cache.clearAll();
+                }
+
                 await this.compress();
                 this.timeEnd = performance.now();
                 this.logger(`\nTime:\n\tSeconds: ${(this.timeEnd - this.timeStart)/1000}\n\tMinutes: ${(this.timeEnd - this.timeStart)/1000/60}`);
