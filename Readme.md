@@ -104,26 +104,6 @@
             */
             .setCacheFilename('images_cache')
             /**
-            * If using cached option then you can set a custom cache process.
-            * 
-            * If using a other name as 'custom', then the gulp-cache process/module are used
-            * If using the 'gulp-cache' process then the options are not longer available:
-            * - setRemoveUnusedFiles
-            * - setRemoveTargetIfExists
-            * - setAlgorithmBits
-            * - setAlgorithmHash
-            * 
-            * Default: 'custom'
-            */
-            .setCacheAlgorithm('gulp-cache')
-            /**
-             * If using a other name as 'custom', then the gulp-cache process/module are used and
-             * you can clear the cache - see https://www.npmjs.com/package/gulp-cache
-             *
-             * Default: false
-             */
-            .setClearGulpCache(true)
-            /**
             * Enable console output.
             * 
             * Default: false
@@ -147,25 +127,6 @@
             * Default: false
             */
             .setRemoveTargetIfExists(true)
-            /**
-             * Based on the node-image-hash module.
-             * The number of bits in a row. The more bits, the more unique the hash.
-             *
-             * This feature only available if the caching algorithm are set to 'custom' (default)
-             * 
-             * Default: 32
-             */
-            .setAlgorithmBits(24)
-            /**
-             * Based on the node-image-hash module.
-             * 
-             * Available hash types:  hex, latin1, base64, binary
-             *
-             * This feature only available if the caching algorithm are set to 'custom' (default)
-             * 
-             * Default: 'hex'
-             */
-            .setAlgorithmHash('base64')
             /**
              * Generate, based on the original source image an webp file
              * 
@@ -236,91 +197,10 @@
         });
     });
 
-# Image compression test with different bit value and hash algorithm
+# Image compression test
 
     - Size before each compression for 261 images was 184.5MB
     - Size after each compression for 261 images was 103.6MB
 
-## Algorithm: hex
-
-    - 32 bits
-        - compression time before cache:
-
-            - Seconds: 467.6469287039996
-            - Minutes: 7.794115478399993
-
-        - compression time with cache support:
-        
-            - Seconds: 157.7575704399999
-            - Minutes: 2.629292840666665
-
-        - with cache support and current algorithm we are saving -66,4% time
-
-    - 8 bits
-        - compression time before cache:
-
-            - Seconds: 599.7059878739994
-            - Minutes: 9.995099797899991
-
-        - compression time with cache support:
-            
-            - Seconds: 179.34185507800058
-            - Minutes: 2.989030917966676
-
-        - with cache support and current algorithm we are saving -66,4% time
-
-## Algorithm: binary
-
-    - 16 bits
-        - compression time before cache:
-
-            - Seconds: 771.4073649600009
-            - Minutes: 12.856789416000016
-
-        - compression time with cache support:
-        
-            - Seconds: 168.5473699519988
-            - Minutes: 2.8091228325333133
-
-        - with cache support and current algorithm we are saving -78,3% time
-
-    - 8 bits
-        - compression time before cache:
-
-            - Seconds: 481.86986221899974
-            - Minutes: 8.031164370316663
-
-        - compression time with cache support:
-            
-            - Seconds: 169.41651245300005
-            - Minutes: 2.8236085408833342
-
-        - with cache support and current algorithm we are saving -64,8% time
-
-## Algorithm: base64
-
-    - 16 bits
-        - compression time before cache:
-
-            - Seconds: 553.5850434539998
-            - Minutes: 9.226417390899996
-
-        - compression time with cache support:
-        
-            - Seconds: 194.11663765199947
-            - Minutes: 3.235277294199991
-
-        - with cache support and current algorithm we are saving -65% time
-
-    - 8 bits
-        - compression time before cache:
-
-            - Seconds: 595.3672284929994
-            - Minutes: 9.92278714154999
-
-        - compression time with cache support:
-            
-            - Seconds: 163.12936889700032
-            - Minutes: 2.718822814950005
-
-        - with cache support and current algorithm we are saving -72,7% time
+    - Time without cache: Seconds: 786.9346095170006, Minutes: 13.115576825283343
+    - Time with cache: Seconds: 2.759671592000872, Minutes: 0.04599452653334787

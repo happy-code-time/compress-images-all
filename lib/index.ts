@@ -5,12 +5,12 @@ const gifsicle = require('imagemin-gifsicle');
 const svg = require('gulp-svgmin');
 const path = require('path');
 const fs = require('fs');
-const imageHash = require('node-image-hash');
 const jpeg = require('imagemin-jpeg-recompress');
 const webp = require('gulp-webp');
 const md5 = require("md5");
 const cache = require('gulp-cache');
 const avif = require('gulp-avif');
+const stream = require('stream');
 const resolvePath = path.resolve;
 const { readdir } = fs.promises;
 //@ts-ignore
@@ -34,15 +34,11 @@ class CompressImagesAll {
     private timeStart: any;
     private timeEnd: any;
     private removeTargetIfExists: boolean;
-    private algorithmBits: number;
-    private algorithmHash: string;
     private generateWebp: boolean;
     private generateAvif: boolean;
     private loggingCallback: any;
-    private cacheAlgorithm: string;
     private webpOptions: { [key: string]: any };
     private avifOptions: { [key: string]: any };
-    private clearGulpCache: boolean;
 
     constructor() {
         this.cacheDirectory = '';
@@ -60,19 +56,15 @@ class CompressImagesAll {
         this.displayLogging = false;
         this.cachedFilename = 'cachedFiles';
         this.removeTargetIfExists = false;
-        this.algorithmBits = 32;
-        this.algorithmHash = 'hex';
         this.generateWebp = false;
         this.generateAvif = false;
         this.loggingCallback = undefined;
-        this.cacheAlgorithm = 'custom';
         this.webpOptions = {
 
         };
         this.avifOptions = {
 
         };
-        this.clearGulpCache = false;
     }
 
     setSource(source: string = ''): CompressImagesAll {
@@ -171,30 +163,6 @@ class CompressImagesAll {
         return this.removeTargetIfExists;
     }
 
-    setAlgorithmBits(algorithmBits: number): CompressImagesAll {
-        if(typeof 1 === typeof algorithmBits){
-            this.algorithmBits = algorithmBits;
-        }
-
-        return this;
-    }
-
-    getAlgorithmBits(): number {
-        return this.algorithmBits;
-    }
-
-    setAlgorithmHash(algorithmHash: string): CompressImagesAll {
-        if(typeof '' === typeof algorithmHash){
-            this.algorithmHash = algorithmHash;
-        }
-
-        return this;
-    }
-
-    getAlgorithmHash(): string {
-        return this.algorithmHash;
-    }
-
     setGenerateWebp(generateWebp: boolean): CompressImagesAll {
         if(typeof true === typeof generateWebp){
             this.generateWebp = generateWebp;
@@ -230,19 +198,7 @@ class CompressImagesAll {
     getLoggingCallback(): boolean {
         return this.loggingCallback;
     }
-
-    setCacheAlgorithm(cacheAlgorithm: string): CompressImagesAll {
-        if(typeof '' === typeof cacheAlgorithm){
-            this.cacheAlgorithm = cacheAlgorithm;
-        }
-
-        return this;
-    }
     
-    getCacheAlgorithm(): string {
-        return this.cacheAlgorithm;
-    }
-
     setWebpOptions(webpOptions: { [key: string]: any } ): CompressImagesAll {
         if(typeof {} === typeof webpOptions){
             this.webpOptions = webpOptions;
@@ -267,18 +223,6 @@ class CompressImagesAll {
         return this.avifOptions;
     }
 
-    setClearGulpCache(clearGulpCache: boolean): CompressImagesAll {
-        if(typeof true === typeof clearGulpCache){
-            this.clearGulpCache = clearGulpCache;
-        }
-
-        return this;
-    }
-    
-    getClearGulpCache(): boolean {
-        return this.clearGulpCache;
-    }
-
     progressSingleDirectory(directory: string, singleSourcePath: { cachedPath: string, files: string[], count: number }) {
         const self = this;
         const { cachedPath, files, count } = singleSourcePath;
@@ -291,11 +235,7 @@ class CompressImagesAll {
                     if('' == this.getCachedDirectory()){
                         this.logger(`[NO CACHE] Processing directory ${directory}`);
                     } else {
-                        if('custom' === this.getCacheAlgorithm()){
-                            this.logger(`[CUSTOM CACHE] Processing directory ${directory}`);
-                        } else {
-                            this.logger(`[GULP-CACHE] Processing directory ${directory}`);
-                        }
+                        this.logger(`[CACHE] Processing directory ${directory}`);
                     }
 
                     /**
@@ -313,50 +253,58 @@ class CompressImagesAll {
                             /**
                              * Support cache directory custom hash check
                              */
-                            if('custom' === this.getCacheAlgorithm()){
-                                await self.processSingleImageWithCacheDirectory(files[i], directory, cachedPath);
+                            await self.processSingleImageWithCacheDirectory(files[i], directory, cachedPath);
 
+                            /**
+                             * Save tmp file on the last loop
+                             */
+                            if(this.max <= this.globalImagesCount){
                                 /**
-                                 * Save tmp file on the last loop
+                                 * Calculate diff, to delete unwanted files from the cache directory
                                  */
-                                if(0 >= this.globalImagesCount){
-                                    /**
-                                     * Close nodejs process from "node-image-hash"
-                                     * 
-                                     * Close all underlying workers. 
-                                     * If you use the asynchronous hashing algorithm, 
-                                     * you need to call this at the end of your program 
-                                     * to close all currently open workers. 
-                                     * Otherwise, your program may keep running until 
-                                     * manually interrupted.
-                                     */
-                                    imageHash.close();
-                                    /**
-                                     * Calculate diff, to delete unwanted files from the cache directory
-                                     */
-                                    if(this.getRemoveUnusedFiles()){
-                                        const diff: string[] = [];
-                                        const oldCompiledImages = Object.getOwnPropertyNames(this.cachedHashChecksums);
+                                if(this.getRemoveUnusedFiles()){
+                                    const diff: { originalPath: string; image: string; webp: string; avif: string }[] = [];
+                                    const oldCompiledImages = Object.getOwnPropertyNames(this.cachedHashChecksums);
 
-                                        for(let x = 0; x < oldCompiledImages.length; x++){
-                                            if(undefined === this.cachedHashChecksumsTemp[oldCompiledImages[x]]){
-                                                diff.push( oldCompiledImages[x] ); 
-                                            }
-                                        }
-        
-                                        for(let x = 0; x < diff.length; x++){
-                                            fs.unlinkSync(diff[x]);
-                                            this.logger(`Removed unused file: ${diff[x]}`)
+                                    for(let x = 0; x < oldCompiledImages.length; x++){
+                                        const v = this.cachedHashChecksums[oldCompiledImages[x]];
+
+                                        if(undefined === this.cachedHashChecksumsTemp[oldCompiledImages[x]]){
+                                            diff.push(
+                                                {
+                                                    ...JSON.parse(v),
+                                                    originalPath: oldCompiledImages[x]
+                                                }
+                                            ); 
                                         }
                                     }
 
-                                    /**
-                                     * Save file as new tmp file
-                                     */
-                                    await this.saveFileWithChecksums(this.cachedHashChecksumsTemp);
+                                    for(let x = 0; x < diff.length; x++){
+                                        const { originalPath, image, webp, avif } = diff[x];
+
+                                        this.logger(`Removing unused generated files based on origin source: ${originalPath}`);                                        
+
+                                        if(this.fileExists(image)){
+                                            fs.unlinkSync(image);
+                                            this.logger(`Removed unused cached file: ${image}`);
+                                        }
+
+                                        if(this.fileExists(webp)){
+                                            fs.unlinkSync(webp);
+                                            this.logger(`Removed unused cached file: ${webp}`);
+                                        }
+
+                                        if(this.fileExists(avif)){
+                                            fs.unlinkSync(avif);
+                                            this.logger(`Removed unused cached file: ${avif}`);
+                                        }
+                                    }
                                 }
-                            } else {
-                                await self.processSingleImageWithCacheDirectoryGulpCache(files[i], directory, cachedPath);
+
+                                /**
+                                 * Save file as new tmp file
+                                 */
+                                await this.saveFileWithChecksums(this.cachedHashChecksumsTemp);
                             }
                         }
 
@@ -381,6 +329,121 @@ class CompressImagesAll {
         });
     }
 
+    readCacheFilesContent(name: string, count: number = 0): Promise<string> {
+        return new Promise( resolve => {
+            if(this.fileExists(name)){
+                const data = fs.readFileSync(
+                    name,
+                    {encoding:'base64', flag:'r'}
+                );
+
+                resolve(data);
+            } else {
+                
+                if(2 >= count){
+                    return resolve('');
+                }
+
+                count += 1;
+
+                setTimeout( () => {
+                    this.readCacheFilesContent(name, count);
+                }, 500);
+            }
+        })
+    };
+
+    fromCachedBufferToFile(destination: string, filename: string, sourceCachePath: string): Promise<boolean> {
+        return new Promise( async (resolve) => {
+            /**
+             * Remove source if exists
+             */
+            if(true === this.getRemoveTargetIfExists() && this.fileExists(`${destination}/${filename}`)){
+                fs.unlinkSync(`${destination}/${filename}`);
+            }
+            /**
+             * Get files buffer from txt file (string)
+             */
+            const dataString = await this.readCacheFilesContent(sourceCachePath);
+            /**
+             * Copy buffer from txt file 
+             * to a new file
+             */
+            const buffer = Buffer.from(dataString, 'base64');
+            fs.createWriteStream(`${destination}/${filename}`).write(buffer);
+
+            resolve(true);
+        });
+    }
+
+    writeCacheBuffer(hashFilePath: string, base64Source: string): Promise<boolean> {
+        return new Promise( async (resolve) => {
+
+            if(this.fileExists(hashFilePath)){
+                fs.unlink(path.join(this.getCachedDirectory(), hashFilePath), async () => {
+                    await this.createBufferFile(hashFilePath, base64Source);
+                });
+            } else {
+                await this.createBufferFile(hashFilePath, base64Source);
+            }
+
+            resolve(true);
+        });
+    }
+
+    processWebp(source: string, destination: string, filename_webp: string, hashFilePath_webp: string): Promise<boolean>{
+        const self = this;
+
+        return new Promise( async (resolve) => {
+            /**
+             * Cache file does not exists, so create an webp file
+             */
+            await self.Async(
+                gulp
+                    .src(source)
+                    .pipe(
+                        webp(this.getWebpOptions())
+                    )
+                    .pipe(gulp.dest(destination)
+                )
+            );
+            /**
+             * Write buffer string to cached file
+             */
+            const bufferCacheFileWebp = await this.readCacheFilesContent(`${destination}/${filename_webp}`);
+            await this.writeCacheBuffer(hashFilePath_webp, bufferCacheFileWebp);
+
+            resolve(true);
+        });
+    }
+
+    processAvif(source: string, destination: string, filename_avif: string, hashFilePath_avif: string): Promise<boolean>{
+        const self = this;
+
+        return new Promise( async (resolve) => {
+            /**
+             * Cache file does not exists, so create an avif file
+             */
+            await self.Async(
+                gulp
+                    .src(source)
+                    .pipe(
+                        avif(this.getAvifOptions())
+                    )
+                    .pipe(gulp.dest(destination)
+                )
+            );
+
+            /**
+             * Write buffer string to cached file
+             */
+            const bufferCacheFileAvif = await this.readCacheFilesContent(`${destination}/${filename_avif}`);
+            await this.writeCacheBuffer(hashFilePath_avif, bufferCacheFileAvif);
+
+            resolve(true);
+        });
+    }
+
     async processSingleImageWithCacheDirectory(source: string, destination: string, cachedPath: string) {
         const self = this;
 
@@ -390,6 +453,9 @@ class CompressImagesAll {
                 this.logger(`[${this.globalImagesCount}/${this.max}]`);
                 /**
                  * Get filename
+                 * 
+                 * image.png
+                 * imagex.jpg
                  */
                 let filename: string[] | string = source.split('/');
                 filename = filename[filename.length - 1];
@@ -407,80 +473,76 @@ class CompressImagesAll {
                  */
                 const fullFilePath = `${cachedPath}/${filename}`;
                 /**
-                 * Calculate hash from path (file)
+                 * Calculate Buffer from path (file)
                  */
-                let hashFromCurrentFile: string = await this.calculateHash(source);
-                const hashFilename = `${md5(hashFromCurrentFile)}.txt`;
+                let base64Source: string = await this.calculateHash(source);
+                const hashCurrentFilename = md5(fullFilePath);
+
+                const hashFilename = `${md5(fullFilePath)}.image.txt`;
                 const hashFilePath = path.join(this.getCachedDirectory(), hashFilename);
+                /**
+                 * Webp cache behavior
+                 */
+                const hashFilename_webp = `${md5(fullFilePath)}.webp.txt`;
+                const hashFilePath_webp = path.join(this.getCachedDirectory(), hashFilename_webp);
+                const filename_webp = this.changeExt(filename, 'webp');
+                /**
+                 * Avif cache behavior
+                 */
+                const hashFilename_avif = `${md5(fullFilePath)}.avif.txt`;
+                const hashFilePath_avif = path.join(this.getCachedDirectory(), hashFilename_avif);
+                const filename_avif = this.changeExt(filename, 'avif');
                 /**
                  * Cache file exists
                  */
-                if(this.fileExists(fullFilePath) && this.fileExists(hashFilePath)) {
-
-                    const readCacheFilesContent = (name: string) => {
-                        return new Promise( resolve => {
-                            fs.readFile( name, 'utf8', (e: any, data: string) => {
-                                if(e || 0 == data.length){
-                                    console.log(e);
-                                    resolve('');
-                                } else {
-                                    resolve(data);
-                                }
-                            });
-                        })
-                    };
-
-                    const hashFromHashedFile = await readCacheFilesContent(hashFilePath);
-
+                if(this.fileExists(hashFilePath)) {
+                    const bufferCacheFile = await this.readCacheFilesContent(hashFilePath);
                     /**
                      * Found match, so do not compile it again
                      */
-                    if(hashFromHashedFile === hashFromCurrentFile){
+                    if(bufferCacheFile === base64Source){
                         this.logger(`Copy file from cache ${fullFilePath}`);
-
-                        if(true === this.getRemoveTargetIfExists() && this.fileExists(`${destination}/${filename}`)){
-                            fs.unlinkSync(`${destination}/${filename}`);
-                        }
-
-                        await self.Async(
-                            gulp
-                                .src(fullFilePath)
-                                .pipe(gulp.dest(destination)
-                            )
-                        );
-
+                        /**
+                         * Original file
+                         */
+                        await this.fromCachedBufferToFile(destination, filename, hashFilePath);
+                        /**
+                         * Webp file
+                         */
                         if(this.getGenerateWebp()){
                             this.logger(`Creating webp`);
-        
-                            await self.Async(
-                                gulp
-                                    .src(source)
-                                    .pipe(
-                                        webp(this.getWebpOptions())
-                                    )
-                                    .pipe(gulp.dest(destination)
-                                )
-                            );
+                            /**
+                             * Copy from buffer to file
+                             */
+                            if(this.fileExists(hashFilePath_webp)){
+                                await this.fromCachedBufferToFile(destination, filename_webp, hashFilePath_webp);
+                            } else {
+                                await this.processWebp(source, destination, filename_webp, hashFilePath_webp);
+                            }
                         }
-
+                        /**
+                         * AVIF
+                         */
                         if(this.getGenerateAvif() && ['png', 'jpg', 'jpeg'].includes(ext)){
                             this.logger(`Creating avif`);
-        
-                            await self.Async(
-                                gulp
-                                    .src(source)
-                                    .pipe(
-                                        avif(this.getAvifOptions())
-                                    )
-                                    .pipe(gulp.dest(destination)
-                                )
-                            );
+                            /**
+                             * Copy from buffer to file
+                             */
+                             if(this.fileExists(hashFilePath_avif)){
+                                await this.fromCachedBufferToFile(destination, filename_avif, hashFilePath_avif);
+                            } else {
+                                await this.processAvif(source, destination, filename_avif, hashFilePath_avif);
+                            }
                         }
                         
                         /**
                          * Write to an temporary new created object
                          */
-                        this.cachedHashChecksumsTemp[fullFilePath] = hashFromCurrentFile;
+                        this.cachedHashChecksumsTemp[fullFilePath] = {
+                            image: hashFilePath,
+                            webp: hashFilePath_webp,
+                            avif: hashFilePath_avif,
+                        };
                         return resolve(true);
                     }
                 }
@@ -494,8 +556,6 @@ class CompressImagesAll {
                  * Compress images
                  */
                 if (['png', 'jpg', 'jpeg', 'gif'].includes(ext)) {
-                    this.logger(`Cache file to ${cachedPath}`);
-
                     await self.Async(
                         gulp
                             .src(source)
@@ -525,7 +585,7 @@ class CompressImagesAll {
                                     }
                                 ),
                             )
-                            .pipe(gulp.dest(cachedPath)
+                            .pipe(gulp.dest(destination)
                         )
                     );
 
@@ -533,8 +593,6 @@ class CompressImagesAll {
                 }
 
                 if ('svg' == ext) {
-                    this.logger(`Cache file to ${cachedPath}`);
-
                     await self.Async(
                         gulp
                             .src(source)
@@ -556,7 +614,7 @@ class CompressImagesAll {
                                     }
                                 ),
                             )
-                            .pipe(gulp.dest(cachedPath)
+                            .pipe(gulp.dest(destination)
                         )
                     );
 
@@ -564,12 +622,10 @@ class CompressImagesAll {
                 }
 
                 if ('ico' == ext) {
-                    this.logger(`Cache file to ${cachedPath}`);
-
                     await self.Async(
                         gulp
                             .src(source)
-                            .pipe(gulp.dest(cachedPath)
+                            .pipe(gulp.dest(destination)
                         )
                     );
 
@@ -581,12 +637,10 @@ class CompressImagesAll {
                  * destination 
                  */
                 if( (this.getExtensions().includes(ext) || this.getExtensions().includes('all')) && false === compiled){
-                    this.logger(`Cache file to ${cachedPath}`);
-
                     await self.Async(
                         gulp
                             .src(source)
-                            .pipe(gulp.dest(cachedPath)
+                            .pipe(gulp.dest(destination)
                         )
                     );
                 }
@@ -603,79 +657,28 @@ class CompressImagesAll {
                      *  "/tmp/compress-images-all/3.jpg" = "81e80813d79b356a4169ec9dsaqdas3..."
                      * ]
                      */
-                    this.cachedHashChecksumsTemp[fullFilePath] = hashFromCurrentFile;
-
+                    this.cachedHashChecksumsTemp[fullFilePath] = {
+                        image: hashFilePath,
+                        webp: hashFilePath_webp,
+                        avif: hashFilePath_avif,
+                    };
                     /**
-                     * Copy from cache to origin destination
-                    */
-                    this.logger(`Copy file to ${destination}`);
-
-                    await self.Async(
-                        gulp
-                            .src(fullFilePath)
-                            .pipe(gulp.dest(destination)
-                        )
-                    );
-
-                    /**
-                     * Write hash file
+                     * DEFAULT 
+                     * 
+                     * Write buffer to file, to access
+                     * it as cache machinsim opn the next loop
                      */
-                    const createFile = (filename: string, fileContent: any) => {
-                        return new Promise( resolve => {
-                            const file = fs.createWriteStream(hashFilePath);
-                            /**
-                             * Handle error
-                             */
-                            file.on('error', function(err: any) {
-                                console.error('Unable to write cache file.');
-                                throw new Error(err);
-                            });
+                    await this.writeCacheBuffer(hashFilePath, base64Source);
 
-                            file.write(fileContent);
-
-                            /**
-                             * End stream
-                             */
-                            file.end();
-                            resolve(true);
-                        });
+                    if(this.getGenerateWebp()){
+                        this.logger(`Creating webp`);
+                        await this.processWebp(source, destination, filename_webp, hashFilePath_webp);
                     }
-
-                    if(this.fileExists(hashFilename)){
-                        fs.unlink(path.join(this.getCachedDirectory(), hashFilename), async () => {
-                            await createFile(hashFilename, hashFromCurrentFile);
-                        });
-                    } else {
-                        await createFile(hashFilename, hashFromCurrentFile);
+    
+                    if(this.getGenerateAvif() && ['png', 'jpg', 'jpeg'].includes(ext)){
+                        this.logger(`Creating avif`);
+                        await this.processAvif(source, destination, filename_avif, hashFilePath_avif);
                     }
-                }
-
-                if(this.getGenerateWebp()){
-                    this.logger(`Creating webp`);
-
-                    await self.Async(
-                        gulp
-                            .src(source)
-                            .pipe(
-                                webp(this.getWebpOptions())
-                            )
-                            .pipe(gulp.dest(destination)
-                        )
-                    );
-                }
-
-                if(this.getGenerateAvif() && ['png', 'jpg', 'jpeg'].includes(ext)){
-                    this.logger(`Creating avif`);
-
-                    await self.Async(
-                        gulp
-                            .src(source)
-                            .pipe(
-                                avif(this.getAvifOptions())
-                            )
-                            .pipe(gulp.dest(destination)
-                        )
-                    );
                 }
 
                 resolve(true);
@@ -687,151 +690,32 @@ class CompressImagesAll {
         });
     };
 
-    async processSingleImageWithCacheDirectoryGulpCache(source: string, destination: string, cachedPath: string) {
-        const self = this;
+    changeExt(filename: string, newExt: string): string {
+        const names = filename.split('.');
+        names[names.length-1] = newExt;
 
-        return new Promise(async (resolve, reject) => {
-            try {
-                this.globalImagesCount += 1;
-                this.logger(`[${this.globalImagesCount}/${this.max}]`);
-                /**
-                 * Get filename
-                 */
-                let filename: string[] | string = source.split('/');
-                filename = filename[filename.length - 1];
-                /**
-                 * File extension
-                 */
-                let ext: string = '';
-                let extension: string[] = source.split('.');
+        return names.join('.');
+    }
 
-                if (undefined !== extension[extension.length - 1]) {
-                    ext = extension[extension.length-1].toLowerCase();
+    createBufferFile(filename: string, fileContent: string): Promise<boolean> {
+        return new Promise( resolve => {
+            fs.writeFile(
+                filename, 
+                fileContent, 
+                {
+                    encoding: "base64",
+                    flag: "w",
+                },
+                (error: string) => {
+                    if(error){
+                        throw new Error(error);
+                    }
+
+                    resolve(true);
                 }
-                /**
-                 * Match not found so compile it
-                 */
-                this.logger(`Processing ${source}`);
-                
-                if(this.getGenerateWebp()){
-                    this.logger(`Creating webp`);
-
-                    await self.Async(
-                        gulp
-                            .src(source)
-                            .pipe(
-                                webp(this.getWebpOptions())
-                            )
-                            .pipe(gulp.dest(destination)
-                        )
-                    );
-                }
-
-                if(this.getGenerateAvif() && ['png', 'jpg', 'jpeg'].includes(ext)){
-                    this.logger(`Creating avif`);
-
-                    await self.Async(
-                        gulp
-                            .src(source)
-                            .pipe(
-                                avif(this.getAvifOptions())
-                            )
-                            .pipe(gulp.dest(destination)
-                        )
-                    );
-                }
-                /**
-                 * Compress images
-                 */
-                if (['png', 'jpg', 'jpeg', 'gif'].includes(ext)) {
-                    await self.Async(
-                        gulp
-                            .src(source)
-                            .pipe(
-                                cache(
-                                    imagemin(
-                                        [
-                                            jpeg(),
-                                            optipng(
-                                                {
-                                                    bitDepthReduction: true,
-                                                    colorTypeReduction: true,
-                                                    optimizationLevel: 3,
-                                                    paletteReduction: true,
-                                                }
-                                            ),
-                                            //@ts-ignore
-                                            gifsicle(
-                                                {
-                                                    interlaced: true,
-                                                    optimizationLevel: 3,
-                                                }
-                                            ),
-                                        ],
-                                        {
-                                            verbose: false,
-                                            silent: true
-                                        }
-                                    ),
-                                    {
-                                        fileCache: new cache.Cache({ cacheDirName: this.getCachedDirectory() })
-                                    }
-                                )
-                            )
-                            .pipe(gulp.dest(destination)
-                        )
-                    );
-                }
-
-                if ('svg' == ext) {
-                    await self.Async(
-                        gulp
-                            .src(source)
-                            .pipe(
-                                cache(
-                                    svg(
-                                        {
-                                            plugins: [
-                                                {
-                                                    name: 'preset-default',
-                                                    params: {
-                                                        overrides: {
-                                                            cleanupIDs: false
-                                                        }
-                                                    }
-                                                },
-                                                {removeViewBox: true},
-                                                {cleanupIDs: false}
-                                            ]
-                                        }
-                                    ),
-                                    {
-                                        fileCache: new cache.Cache({ cacheDirName: this.getCachedDirectory() })
-                                    }
-                                )
-                            )
-                            .pipe(gulp.dest(destination)
-                        )
-                    );
-                }
-
-                if ('ico' == ext) {
-                    await self.Async(
-                        gulp
-                            .src(source)
-                            .pipe(gulp.dest(destination))
-                        )
-                    ;
-                } 
-
-                resolve(true);
-            }
-            catch (e) {
-                this.logger(`[-] Error on single image: ${source} | ${e}`);
-                resolve(false);
-            }
+            );
         });
-    };
+    }
 
     async processSingleImage(source: string, destination: string) {
         const self = this;
@@ -1111,11 +995,9 @@ class CompressImagesAll {
                                 if('' !== this.getCachedDirectory()){
                                     f[destination].cachedPath = `${this.getCachedDirectory()}${c}`;
 
-                                    if('custom' === this.getCacheAlgorithm()){
-                                        await self.makeDir(f[destination].cachedPath);
-                                    }
-
+                                    await self.makeDir(f[destination].cachedPath);
                                     await self.makeDir(destination);
+
                                 } else {
                                     f[destination].cachedPath = '';
                                 }
@@ -1202,7 +1084,7 @@ class CompressImagesAll {
                      */
                      paths.map( path => {
                         const hash = cachedHashChecksums[path];
-                        file.write(`${path}:::::${hash}` + '\n');
+                        file.write(`${path}:::::${JSON.stringify(hash)}` + '\n');
                     });
                     /**
                      * End stream
@@ -1237,33 +1119,13 @@ class CompressImagesAll {
      */
     calculateHash(filePath: string): Promise<string> {
         return new Promise(async (resolve) => {
-            /**
-             * File extension
-             */
-            let ext: string[] | string = filePath.split('.');
-
-            if (undefined !== ext[ext.length - 1]) {
-                ext = ext[ext.length - 1];
-                ext = ext.toLowerCase();
-            }
-
-            //@ts-ignore
-            if(['jpg', 'jpeg', 'png'].includes(ext)){
-                try{
-                    imageHash
-                        .hash(filePath, this.getAlgorithmBits(), this.getAlgorithmHash())
-                        .then( (hash: { hash: string, type: string } ) => {
-                            resolve(hash.hash);
-                        })
-                        .catch( (e: any) => {
-                            this.logger(e);
-                            resolve(filePath);
-                        })
-                } catch(e){
-                    resolve(filePath);
-                }
-            } else {
-                resolve(filePath);
+            try{
+                resolve(
+                    fs.readFileSync(filePath, 'base64')
+                );
+            } catch(e){
+                console.error(e);
+                resolve('');
             }
         });
     }
@@ -1360,11 +1222,8 @@ class CompressImagesAll {
                 this.max = this.globalImagesCount;
                 this.globalImagesCount = 0;
 
-                if('' !== this.getCachedDirectory() && 'custom' !== this.getCacheAlgorithm() && true === this.getClearGulpCache()){
-                    cache.clearAll();
-                }
-
                 await this.compress();
+
                 this.timeEnd = performance.now();
                 this.logger(`\nTime:\n\tSeconds: ${(this.timeEnd - this.timeStart)/1000}\n\tMinutes: ${(this.timeEnd - this.timeStart)/1000/60}`);
                 resolve(true);
