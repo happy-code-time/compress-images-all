@@ -8,7 +8,6 @@ const fs = require('fs');
 const jpeg = require('imagemin-jpeg-recompress');
 const webp = require('gulp-webp');
 const md5 = require("md5");
-const cache = require('gulp-cache');
 const avif = require('gulp-avif');
 const stream = require('stream');
 const resolvePath = path.resolve;

@@ -8,7 +8,6 @@ declare const fs: any;
 declare const jpeg: any;
 declare const webp: any;
 declare const md5: any;
-declare const cache: any;
 declare const avif: any;
 declare const stream: any;
 declare const resolvePath: any;
