@@ -14,7 +14,7 @@ const CompressImagesAll = require('.');
             .setSource(path.join(__dirname, 'source'))
             .setDestination(path.join(__dirname, 'public'))
             .setExtensions(['jpg', 'jpeg', 'png', 'gif', 'ico', 'svg'])
-            .setCachedDirectory('/tmp/dsgdfhdhdfhdf')
+            .setCachedDirectory('/tmp/cached/images/for/project')
             .setCacheFilename('images_cache')
             .setDisplayLogging(true)
             .setRemoveUnusedFiles(true)

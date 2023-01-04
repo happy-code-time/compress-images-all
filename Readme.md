@@ -134,10 +134,13 @@
         });
     });
 
-## Usage with node.js
+## Usage with node.js in development mode
 
     # Terminal
-    cd /path/to/compress-images-all && node node.js
+    cd /path/to/compress-images-all 
+    yarn install
+    yarn run build or yarn run watch
+    node node.js
 
 # Image compression test
 
