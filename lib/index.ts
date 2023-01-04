@@ -804,7 +804,6 @@ class CompressImagesAll {
                                             }
                                         }
                                     },
-                                    { removeViewBox: true },
                                     { cleanupIDs: false }
                                 ]
                             }
