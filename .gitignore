@@ -2,3 +2,5 @@ node_modules
 yarn.lock
 lib/index.js
 index.js
+public/*
+source/*
