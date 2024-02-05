@@ -1,32 +1,37 @@
 ## Compress images all
 
-    This Javascript based module is a collection of different photo compression modules and has a few features. You can:
-        
-    1) Cachen Photos
+    This Javascript based module is a collection of different photo compression modules and has a few features.
     
-    Minified images can be cached, so on the next run you can compile only the photos that are NEW and the others are simply copied from the cache to the Zile directory.
+    - Cache Images
+
+        Minified images can be cached, so on the next run you can compile only the photos that are NEW and the others are simply copied from the cache to the Zile directory.
     
-    2) Delete unused photos from cache
+    - Delete unused images from cache (example: autocleanup after an deployment for all images thats not used anymore)
     
-     You can automatically delete photos from the cache. This happens after the compile process. All images currently compiled in the source directory are compared to the cache, if there are differences, deleted the photos from the difference (cache directory) to keep the hard drive clean.
+        You can automatically delete photos from the cache. This happens after the compile process. All images currently compiled in the source directory are compared to the cache, if there are differences, deleted the photos from the difference (cache directory) to keep the hard drive clean.
 
-    3) Move "Other Files" only
+    - Move "Other Files" only
 
-    Unsupported formats such as:.mp4,.ts,.mov,.pdf,.odt can easily be moved or ignored. If these are to be ignored, they remain in the source directory, if they are to be copied, they are simply copied to the destination directory.
+        Unsupported formats such as:.mp4,.ts,.mov,.pdf,.odt can easily be moved or ignored while compile process. If these are to be ignored, they remain in the source directory, if they are to be copied, they are simply copied to the destination directory.
 
-    4) WEBP
+    - Create .WEBP images
 
-    All images (in.jpg,.jpeg,.png format) can be compiled to.webp files, this means the same image quality but a significantly smaller size (kilobytes, megabytes) of the image.
+        All images (in.jpg,.jpeg,.png format) can be compiled to.webp files, this means the same image quality but a significantly smaller size (kilobytes, megabytes) of the image.
 
-    5) AVIF
+    - Create .AVIF images
 
-    All images (in.jpg,.jpeg,.png) format can be compiled to.avif files, this means the same image quality but a much smaller size (kilobytes, megabytes) of the image. As a rule, even smaller than.webp formats.
+        All images (in.jpg,.jpeg,.png) format can be compiled to.avif files, this means the same image quality but a much smaller size (kilobytes, megabytes) of the image. As a rule, even smaller than.webp formats.
 
 ## Clone repository for local purposes
 
-    git clone ssh://git@github.com/happy-code-time/compress-images-all.git compress-images-all && cd compress-images-all
+    git clone ssh://git@github.com/happy-code-time/compress-images-all.git compress-images-all && \
+    cd compress-images-all && \
+    yarn install  && \
+    mkdir source public
 
-## Install
+    Put all images you want to compress to the source folder. All compressed images will be inside the public folder.
+
+## Install as external repository
 
     # npm
     npm i --save-dev compress-images-all
@@ -34,23 +39,23 @@
     # yarn
     yarn add --dev compress-images-all
 
-## Development
+## Dev mode to chnage the code to your needs
     
     # npm
-    npm install && npm run watch
+    npm run watch
     
     # yarn
-    yarn install && yarn run watch
+    yarn run watch
 
-## Production
+## Production mode
 
     # npm 
-    npm install && npm run build
+    npm run build
     
     # yarn
-    yarn install && yarn run build
+    yarn run build
 
-## Functions
+## Configuration
 
     setSource - Set source path. Default: '' (empty string).
     
@@ -88,7 +93,7 @@
 
     setCopyNotImages - If there are files other then supported (image extensions), then just copy the file froim source to destination.
 
-## Usage with gulp
+## Usage as gulp task
 
     const CompressImagesAll = require('compress-images-all');
 
@@ -134,12 +139,8 @@
         });
     });
 
-## Usage with node.js in development mode
+## Usage with node.js to compress images. The file "node.js" are the config file.
 
-    # Terminal
-    cd /path/to/compress-images-all 
-    yarn install
-    yarn run build or yarn run watch
     node node.js
 
 # Image compression test
