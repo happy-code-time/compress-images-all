@@ -1,18 +1,11 @@
-declare const gulp: any;
-declare const imagemin: any;
-declare const optipng: any;
-declare const gifsicle: any;
-declare const svg: any;
-declare const path: any;
 declare const fs: any;
-declare const jpeg: any;
-declare const webp: any;
-declare const md5: any;
-declare const avif: any;
-declare const stream: any;
-declare const resolvePath: any;
-declare const readdir: any;
-declare const performance: any;
+declare const fsp: any;
+declare const path: any;
+declare const nodeCrypto: any;
+declare const sharp: any;
+declare const optimize: any;
+declare const pLimit: any;
+declare const nodePerformance: any;
 declare class CompressImagesAll {
     private cacheDirectory;
     private source;
@@ -74,43 +67,26 @@ declare class CompressImagesAll {
     getAvifOptions(): {
         [key: string]: any;
     };
-    progressSingleDirectory(destination: string, destinationInformation: {
-        cachedPath: string;
-        files: string[];
-        count: number;
-    }): Promise<unknown>;
-    readCacheFilesContent(name: string, count?: number): Promise<string>;
-    fromCachedBufferToFile(destination: string, filename: string, sourceCachePath: string): Promise<boolean>;
-    writeCacheBuffer(hashFilePath: string, base64Source: string): Promise<boolean>;
-    processWebp(source: string, destination: string, filename_webp: string, hashFilePath_webp: string, ext: string): Promise<boolean>;
-    processAvif(source: string, destination: string, filename_avif: string, hashFilePath_avif: string, ext: string): Promise<boolean>;
-    processSingleImageWithCacheDirectory(source: string, destination: string, cachedPath: string): Promise<unknown>;
-    changeExt(filename: string, newExt: string): string;
-    createBufferFile(filename: string, fileContent: string): Promise<boolean>;
-    processSingleImage(source: string, destination: string): Promise<unknown>;
-    getFileExtension(source: string): string;
-    getFilename(source: string): string;
-    compileImage(source: string, destination: string, ext: string): Promise<boolean>;
-    createImageSvg(source: string, destination: string): Promise<boolean>;
-    moveIco(source: string, destination: string): Promise<boolean>;
-    moveFile(source: string, destination: string): Promise<boolean>;
-    createImageWebp(source: string, destination: string, ext: string): Promise<boolean>;
-    createImageAvif(source: string, destination: string, ext: string): Promise<boolean>;
-    createCachedDirectory(): void;
     logger(message: string): void;
-    Async(p: any): Promise<boolean>;
     makeDir(destination?: string): Promise<boolean>;
-    getSourceFiles(dir: string, files?: {}): Promise<{
-        [directory: string]: [files: string[], count: number];
-    }>;
-    getChecksums(): Promise<{
-        [directory: string]: string;
-    }>;
-    saveFileWithChecksums(cachedHashChecksums: {
-        [key: string]: any;
-    }): Promise<boolean>;
     fileExists(filepath: string): boolean;
+    getFileExtension(source: string): string;
+    getSourceFiles(dir: string, files?: any): Promise<any>;
+    scanFiles(dir: string, fileList?: string[]): Promise<string[]>;
     calculateHash(filePath: string): Promise<string>;
-    compress(): Promise<unknown>;
+    getChecksums(): Promise<{
+        [key: string]: any;
+    }>;
+    saveChecksums(data: {
+        [key: string]: any;
+    }): Promise<void>;
     start(): Promise<unknown>;
+    processImage(sourcePath: string): Promise<void>;
+    optimizeRaster(source: string, dest: string, ext: string): Promise<void>;
+    convertToWebp(source: string, dest: string): Promise<void>;
+    convertToAvif(source: string, dest: string): Promise<void>;
+    optimizeSvg(source: string, dest: string): Promise<void>;
+    changeExt(filename: string, newExt: string): string;
+    cleanupCache(): Promise<void>;
+    safeDelete(filePath: string): Promise<void>;
 }
